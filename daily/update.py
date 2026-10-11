@@ -60,6 +60,7 @@ def update_margin_sse():
 
 def update_etf_daily():
     import akshare as ak
+    (DATA / "etf").mkdir(exist_ok=True)
     for code in ETF_SINA:
         try:
             ak.fund_etf_hist_sina(symbol=code).to_csv(DATA / "etf" / f"{code}.csv", index=False)
