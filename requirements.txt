@@ -1,0 +1,8 @@
+pandas>=2.2
+numpy>=1.26
+akshare>=1.18
+pyarrow>=15
+matplotlib>=3.8
+# 只有部分研究脚本需要：
+# baostock    research/download_stocks.py
+# pillow      research/digitize_his.py

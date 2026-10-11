@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+
+# 日志和本机设置
+*.log
+*.stdout
+.claude/
+
+# 别人发布的截图和从截图读出的数据，不上传
+0625data/
+1008data/
+Image_*.jpg
+reports/replica_sentiment.png
+
+# 每次运行生成的文件
+report_data/
+report_docs/
+report_docs_assets.json
+reports/*.html
+reports/存档/
+
+# 数据：大文件和每次运行会重新生成的缓存不上传，
+# 只保留重新下载很费时、或首次运行需要的小文件
+data/*
+!data/constituents/
+!data/etf_shares_sse.csv
+!data/margin_sse.csv
+!data/margin_account_info.csv
+!data/margin_sh_full.csv
+!data/margin_sz_full.csv

@@ -1,0 +1,115 @@
+<div class="rp">
+  <header class="rp-head" id="summary-head">
+    <h1>A股情绪日报</h1>
+    <div class="rp-asof">数据日期 <span class="dash-skeleton" data-source="summary" data-field="date" data-row="0">—</span></div>
+    <p class="rp-take dash-skeleton" id="takeaway" data-source="summary indexes">—</p>
+  </header>
+
+  <section class="rp-card" id="daily">
+    <h2>近 20 个交易日</h2>
+    <p class="rp-note">第一行是最新交易日。温度和过热分数都是 0–100；短线温度只在两端有意义（&lt;10 短期易反弹，&gt;90 回落后中期偏弱）；中线温度 &lt;20 为恐慌区。融资余额通常次日早上公布，当天可能暂缺。</p>
+    <div class="rp-scroll">
+      <table class="rp-table rp-daily" id="daily-table" data-source="daily" data-row-key="date">
+        <thead><tr>
+          <th data-field="date">日期</th><th data-field="sh">上证</th><th data-field="sh_pct">涨跌 %</th>
+          <th data-field="mid_temp">中线温度</th><th data-field="short_temp">短线温度</th><th data-field="heat">过热分数</th>
+          <th data-field="amount_yi">成交额（亿）</th><th data-field="up">上涨家数</th><th data-field="down">下跌家数</th>
+          <th data-field="zt">涨停</th><th data-field="dt">跌停</th>
+          <th data-field="margin_yi">融资余额（亿）</th><th data-field="margin_chg_yi">融资增减（亿）</th>
+          <th data-field="etf_net_yi">宽基 ETF 净申购（亿）</th><th data-field="signals">当天信号</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="rp-card" id="index-signals">
+    <h2>各指数情绪与顶底信号</h2>
+    <p class="rp-note">"按市值"四个指数对应 A 股四个股指期货（IH、IF、IC、IM），从超大盘到小盘；"按板块"是上证、深证、创业板、科创板。中证500 和中证1000 走势高度重合（相关系数 0.96），深证成指和创业板指也是（0.95）；科创50 和其他指数差别最大。情绪 ≤15 超卖、≥93 过热。信号：★S 二级顶部、▽S 一级顶部、破 = 收盘连续两天跌破月线 BBI；△B 一级底部、★B 二级底部、★★B 三级底部。除 ★★B 外都与通达信公式 DINGDI 一致；★★B 要用全市场中线温度和 ETF 申购数据，只在日报里有。成分股涨跌：科创50 一栏为整个科创板的家数。</p>
+    <div class="rp-scroll">
+      <table class="rp-table" id="idx-table" data-source="indexes" data-row-key="name">
+        <thead><tr>
+          <th data-field="name">指数</th><th data-field="group">分组</th><th data-field="close">收盘</th><th data-field="pct">涨跌 %</th>
+          <th data-field="senti">情绪</th><th data-field="signal">今日信号</th>
+          <th data-field="adv">成分股上涨</th><th data-field="dec">成分股下跌</th>
+          <th data-field="dist_high">距一年高点 %</th>
+          <th data-field="last_top">最近 ★S</th><th data-field="last_s1">最近 ▽S</th><th data-field="last_b3">最近 ★★B</th><th data-field="last_b2">最近 ★B</th><th data-field="last_b1">最近 △B</th><th data-field="last_m">最近 破月BBI</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="rp-card" id="card-senti">
+    <h2>八个指数的情绪（近 120 个交易日）</h2>
+    <p class="rp-note">复刻那位交易者公开的分指数情绪指标（与他的读数相关系数 0.91–0.97），本质是指数自身的短期超买超卖。两条参考线：15 超卖、93 过热。</p>
+    <div class="rp-group">按市值（他看的四个）</div>
+    <div class="rp-multi dash-skeleton" id="chart-senti-a" data-source="history"></div>
+    <div class="rp-group">按板块（你看的四个）</div>
+    <div class="rp-multi dash-skeleton" id="chart-senti-b" data-source="history"></div>
+  </section>
+
+  <section class="rp-grid">
+    <div class="rp-card" id="card-sh">
+      <h2>上证指数与顶底信号（近一年，虚线为月线 BBI）</h2>
+      <div class="rp-legend" id="sig-legend"></div>
+      <div class="rp-chart tall dash-skeleton" id="chart-sh" data-source="history"></div>
+    </div>
+    <div class="rp-card" id="card-temp">
+      <h2>情绪温度（近一年）</h2>
+      <p class="rp-note">中线温度（约一个月视角）：&lt;20 恐慌区，历史上 &lt;10 时沪深300 之后 60 天上涨概率约 85%；&gt;80 过热区只作预警。短线温度（1–4 周视角，已换算为过去两年中的分位）：&lt;10 时之后 5 天上涨概率约 65%；&gt;90 时短期仍可能惯性上涨，但从 &gt;90 回落后之后 60 天平均下跌 3–4%；10–90 之间参考意义不大。</p>
+      <div class="rp-chart tall dash-skeleton" id="chart-temp" data-source="history"></div>
+    </div>
+  </section>
+
+  <section class="rp-card" id="overlay">
+    <h2>资金与宽度，对照指数走势</h2>
+    <div class="rp-ctl"><label for="px-sel">上方叠加的指数</label>
+      <select id="px-sel"><option value="sh">上证指数</option><option value="hs300">沪深300</option><option value="sz">深证成指</option><option value="cyb">创业板指</option><option value="kc50">科创50</option></select>
+    </div>
+    <div class="rp-grid">
+      <div id="card-heat" style="min-width:0">
+        <h2>融资 + 成交额过热分数（近一年）</h2>
+        <p class="rp-note">成交额相对年均、融资买入占成交额、融资余额 60 日增速的近 3 年分位平均。≥90 极热：之后往往还有上涨，但每一轮最终都以下跌收场。</p>
+        <div class="rp-chart tall dash-skeleton" id="chart-heat" data-source="history"></div>
+      </div>
+      <div id="card-etf" style="min-width:0">
+        <h2>宽基 ETF 净申购（近 120 个交易日，亿元）</h2>
+        <p class="rp-note">上交所 8 只主要宽基 ETF 份额变化 × 收盘价。2024-01、2024-02、2025-04 的国家队入场都是单日数百亿元。</p>
+        <div class="rp-chart tall dash-skeleton" id="chart-etf" data-source="etf history"></div>
+      </div>
+      <div id="card-breadth" style="min-width:0">
+        <h2>上涨家数减下跌家数（近 60 个交易日）</h2>
+        <div class="rp-chart tall dash-skeleton" id="chart-breadth" data-source="breadth history"></div>
+      </div>
+      <div id="card-limit" style="min-width:0">
+        <h2>涨停与跌停家数（近 60 个交易日）</h2>
+        <div class="rp-chart tall dash-skeleton" id="chart-limit" data-source="breadth history"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="rp-card" id="signal-log">
+    <h2>信号记录（2024 年以来）</h2>
+    <p class="rp-note">按日期倒序。△B 在漫长下跌中会反复出现，★S 和 ▽S 在牛市中途也会出现，所以都按信号分批；跌破月线 BBI 时，剩下的仓位离场。</p>
+    <div class="rp-sig-box">
+      <table class="rp-table" id="sig-table" data-source="signals" data-row-key="date,name">
+        <thead><tr><th data-field="date">日期</th><th data-field="name">指数</th><th data-field="type">信号</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="rp-card" id="method">
+    <h2>指标说明</h2>
+    <dl class="rp-defs">
+      <dt>情绪温度</dt><dd>全市场约 5500 只 A 股每天的上涨占比、净涨停、炸板率、最高连板、晋级率、昨日涨停股表现、60 日新高减新低、站上均线比例、成交额，以及融资余额变化，各自和过去 2–3 年比较取分位后平均。只用过去的数据，每天收盘即可算出。</dd>
+      <dt>★S 二级顶部</dt><dd>一年高点附近、近 5 日情绪曾 ≥84，当天出现带上影线、实体跌幅 ≥1% 且收破 5 日线的阴线。上证指数约每年 1.5 次；之后 60 天下跌概率约 52%（基准 48%），之后 20 天反而多数上涨。</dd>
+      <dt>▽S 一级顶部</dt><dd>情绪 5 日内曾 ≥93（过热），当天向下跌破 70，且指数仍在一年高点 5% 以内。标出过 2007-10、2015-06、2018-01、2021-01、2026-05-14 等高点，也会出现在牛市中途。1995 年以来上证和深证之后 60 天下跌概率约 50–60%，统计优势弱。A 股的顶部信号整体弱于底部信号：底部常是一次集中恐慌，顶部是缓慢派发，强势时惯性大。两种顶部信号都只适合分批止盈。</dd>
+      <dt>△B / ★B 底部信号</dt><dd>△B：用当日最低价算的情绪 ≤10，且离 120 日高点的回撤 ≥11 倍日波动率。★B：再叠加该指数下跌家数 ≥92%，且距高点已 ≥30 个交易日。回测之后 60 天上涨概率：△B 53%，★B 62%（基准 50%）。熊市初期最容易失败。</dd>
+      <dt>★★B 三级底部</dt><dd>★B 出现后 5 个交易日内，再满足下面任一条件：全市场中线温度 ≤10，或上交所宽基 ETF 单日净申购 ≥200 亿元（国家队入场；份额次日公布，所以晚一天确认）。2011 年以来约 12 轮（2011-09、2016-01、2018-10、2022-04、2022-09、2022-10、2024-01、2025-04、2026-07），之后 60 天平均上涨约 8%，上涨概率约 89%，信号后 60 天内再跌的中位数约 4%。三个条件同时满足只有 2024 年 1 月一次，太少，所以用"任一"。</dd>
+      <dt>破月BBI</dt><dd>月线 BBI = 月收盘价 3、6、12、24 个月均线的平均；当月还没走完时用当天收盘价代替本月收盘，和通达信月线图一致。收盘连续两天在它下方时标记，之后要先回到上方才会再标。每年约 3 次，在线附近来回时会连续出现。回测中作为剩余仓位的离场条件，7 个指数平均最大回撤从约 45% 降到约 27%。</dd>
+      <dt>数据来源</dt><dd>通达信本地日线（指数、全部个股、指数成分股涨跌家数），两融账户统计，上交所 ETF 每日份额，新浪 ETF 日线。每个交易日收盘后更新。以上为历史统计，不构成投资建议。</dd>
+    </dl>
+  </section>
+</div>

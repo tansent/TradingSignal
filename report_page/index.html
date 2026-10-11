@@ -1,0 +1,419 @@
+<style>
+/* 布局：一句话结论 → 五张核心卡片 → 指数信号表 → 图表两列网格 → 信号记录 → 说明 */
+.rp { display: grid; gap: var(--cds-gap-lg); font-family: var(--font-anthropic-sans); color: var(--color-fg); }
+.rp-head { display: grid; gap: var(--cds-gap-xs); }
+.rp-head h1 { margin: 0; font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); text-wrap: balance; }
+.rp-asof { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+.rp-take { margin: 0; font-size: var(--cds-font-size-body); max-width: 70ch; text-wrap: pretty; }
+.rp-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12.5rem), 1fr)); gap: var(--cds-gap-md); }
+.rp-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); min-width: 0; display: grid; gap: var(--cds-gap-sm); align-content: start; }
+.rp-card h2 { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); }
+.rp-label { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); letter-spacing: .02em; }
+.rp-big { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: calc(var(--cds-font-size-title) * 1.35); line-height: 1.05; font-variant-numeric: tabular-nums; }
+.rp-zone { display: inline-flex; align-items: center; gap: var(--cds-gap-xs); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.rp-dot { width: .5rem; height: .5rem; border-radius: 50%; display: inline-block; background: var(--cds-chart-muted); }
+.rp-sub { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); font-variant-numeric: tabular-nums; }
+.rp-sub b { color: var(--color-fg); font-weight: var(--cds-font-weight-medium); }
+.rp-note { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); max-width: 80ch; }
+.rp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr)); gap: var(--cds-gap-md); }
+.rp-chart { position: relative; min-height: 13rem; }
+.rp-chart.tall { min-height: 16rem; }
+.rp-multi { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: var(--cds-gap-md); }
+.rp-mini { position: relative; min-height: 8.5rem; }
+.rp-mini-t { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.rp-axis text, .rp-lbl { fill: var(--color-fg-muted); font-size: var(--cds-font-size-caption); font-family: var(--font-anthropic-sans); }
+.rp-endlbl { fill: var(--color-fg); font-size: var(--cds-font-size-caption); font-family: var(--font-anthropic-sans); font-variant-numeric: tabular-nums; }
+.rp-tip { position: absolute; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); white-space: nowrap; z-index: 3; display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
+.rp-tip .d { color: var(--cds-text-secondary); }
+.rp-tip .sw { display: inline-block; width: .55rem; height: .55rem; border-radius: 2px; margin-right: .3rem; vertical-align: middle; }
+.rp-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.rp-legend span { display: inline-flex; align-items: center; gap: var(--cds-gap-xs); }
+.rp-scroll { overflow-x: auto; }
+.rp-table { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-body); font-variant-numeric: tabular-nums; }
+.rp-table th { text-align: right; font-weight: var(--cds-font-weight-medium); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+.rp-table td { text-align: right; padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+.rp-table th:first-child, .rp-table td:first-child { text-align: left; }
+.rp-sig-box { max-height: 22rem; overflow: auto; }
+.rp-sig-box th { position: sticky; top: 0; background: var(--color-panel); }
+.rp-defs { display: grid; gap: var(--cds-gap-sm); margin: 0; }
+.rp-defs dt { font-weight: var(--cds-font-weight-medium); font-size: var(--cds-font-size-body); }
+.rp-defs dd { margin: 0; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); max-width: 80ch; }
+.rp-fail { display: flex; align-items: center; justify-content: center; gap: var(--cds-gap-xs); min-height: inherit; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.rp-fail::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--color-bad); }
+.rp-daily tbody tr:first-child td { font-weight: var(--cds-font-weight-medium); background: var(--color-bg); }
+.rp-daily td:last-child, .rp-daily th:last-child { text-align: left; white-space: normal; min-width: 14rem; }
+.rp-group { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin: var(--cds-gap-sm) 0 0; }
+.rp-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cds-gap-sm); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.rp-ctl select { font: inherit; color: var(--color-fg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 2px var(--cds-pad-sm); }
+.rp-ctl select:focus-visible { outline: 2px solid var(--cds-chart-reference); outline-offset: 1px; }
+[data-dash-source-state=empty] { color: transparent; }
+[data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+</style>
+
+<div class="rp">
+  <header class="rp-head" id="summary-head">
+    <h1>A股情绪日报</h1>
+    <div class="rp-asof">数据日期 <span class="dash-skeleton" data-source="summary" data-field="date" data-row="0">—</span></div>
+    <p class="rp-take dash-skeleton" id="takeaway" data-source="summary indexes">—</p>
+  </header>
+
+  <section class="rp-card" id="daily">
+    <h2>近 20 个交易日</h2>
+    <p class="rp-note">第一行是最新交易日。温度和过热分数都是 0–100；短线温度只在两端有意义（&lt;10 短期易反弹，&gt;90 回落后中期偏弱）；中线温度 &lt;20 为恐慌区。融资余额通常次日早上公布，当天可能暂缺。</p>
+    <div class="rp-scroll">
+      <table class="rp-table rp-daily" id="daily-table" data-source="daily" data-row-key="date">
+        <thead><tr>
+          <th data-field="date">日期</th><th data-field="sh">上证</th><th data-field="sh_pct">涨跌 %</th>
+          <th data-field="mid_temp">中线温度</th><th data-field="short_temp">短线温度</th><th data-field="heat">过热分数</th>
+          <th data-field="amount_yi">成交额（亿）</th><th data-field="up">上涨家数</th><th data-field="down">下跌家数</th>
+          <th data-field="zt">涨停</th><th data-field="dt">跌停</th>
+          <th data-field="margin_yi">融资余额（亿）</th><th data-field="margin_chg_yi">融资增减（亿）</th>
+          <th data-field="etf_net_yi">宽基 ETF 净申购（亿）</th><th data-field="signals">当天信号</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="rp-card" id="index-signals">
+    <h2>各指数情绪与顶底信号</h2>
+    <p class="rp-note">"按市值"四个指数对应 A 股四个股指期货（IH、IF、IC、IM），从超大盘到小盘；"按板块"是上证、深证、创业板、科创板。中证500 和中证1000 走势高度重合（相关系数 0.96），深证成指和创业板指也是（0.95）；科创50 和其他指数差别最大。情绪 ≤15 超卖、≥93 过热。信号：★S 二级顶部、▽S 一级顶部、破 = 收盘连续两天跌破月线 BBI；△B 一级底部、★B 二级底部、★★B 三级底部。除 ★★B 外都与通达信公式 DINGDI 一致；★★B 要用全市场中线温度和 ETF 申购数据，只在日报里有。成分股涨跌：科创50 一栏为整个科创板的家数。</p>
+    <div class="rp-scroll">
+      <table class="rp-table" id="idx-table" data-source="indexes" data-row-key="name">
+        <thead><tr>
+          <th data-field="name">指数</th><th data-field="group">分组</th><th data-field="close">收盘</th><th data-field="pct">涨跌 %</th>
+          <th data-field="senti">情绪</th><th data-field="signal">今日信号</th>
+          <th data-field="adv">成分股上涨</th><th data-field="dec">成分股下跌</th>
+          <th data-field="dist_high">距一年高点 %</th>
+          <th data-field="last_top">最近 ★S</th><th data-field="last_s1">最近 ▽S</th><th data-field="last_b3">最近 ★★B</th><th data-field="last_b2">最近 ★B</th><th data-field="last_b1">最近 △B</th><th data-field="last_m">最近 破月BBI</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="rp-card" id="card-senti">
+    <h2>八个指数的情绪（近 120 个交易日）</h2>
+    <p class="rp-note">复刻那位交易者公开的分指数情绪指标（与他的读数相关系数 0.91–0.97），本质是指数自身的短期超买超卖。两条参考线：15 超卖、93 过热。</p>
+    <div class="rp-group">按市值（他看的四个）</div>
+    <div class="rp-multi dash-skeleton" id="chart-senti-a" data-source="history"></div>
+    <div class="rp-group">按板块（你看的四个）</div>
+    <div class="rp-multi dash-skeleton" id="chart-senti-b" data-source="history"></div>
+  </section>
+
+  <section class="rp-grid">
+    <div class="rp-card" id="card-sh">
+      <h2>上证指数与顶底信号（近一年，虚线为月线 BBI）</h2>
+      <div class="rp-legend" id="sig-legend"></div>
+      <div class="rp-chart tall dash-skeleton" id="chart-sh" data-source="history"></div>
+    </div>
+    <div class="rp-card" id="card-temp">
+      <h2>情绪温度（近一年）</h2>
+      <p class="rp-note">中线温度（约一个月视角）：&lt;20 恐慌区，历史上 &lt;10 时沪深300 之后 60 天上涨概率约 85%；&gt;80 过热区只作预警。短线温度（1–4 周视角，已换算为过去两年中的分位）：&lt;10 时之后 5 天上涨概率约 65%；&gt;90 时短期仍可能惯性上涨，但从 &gt;90 回落后之后 60 天平均下跌 3–4%；10–90 之间参考意义不大。</p>
+      <div class="rp-chart tall dash-skeleton" id="chart-temp" data-source="history"></div>
+    </div>
+  </section>
+
+  <section class="rp-card" id="overlay">
+    <h2>资金与宽度，对照指数走势</h2>
+    <div class="rp-ctl"><label for="px-sel">上方叠加的指数</label>
+      <select id="px-sel"><option value="sh">上证指数</option><option value="hs300">沪深300</option><option value="sz">深证成指</option><option value="cyb">创业板指</option><option value="kc50">科创50</option></select>
+    </div>
+    <div class="rp-grid">
+      <div id="card-heat" style="min-width:0">
+        <h2>融资 + 成交额过热分数（近一年）</h2>
+        <p class="rp-note">成交额相对年均、融资买入占成交额、融资余额 60 日增速的近 3 年分位平均。≥90 极热：之后往往还有上涨，但每一轮最终都以下跌收场。</p>
+        <div class="rp-chart tall dash-skeleton" id="chart-heat" data-source="history"></div>
+      </div>
+      <div id="card-etf" style="min-width:0">
+        <h2>宽基 ETF 净申购（近 120 个交易日，亿元）</h2>
+        <p class="rp-note">上交所 8 只主要宽基 ETF 份额变化 × 收盘价。2024-01、2024-02、2025-04 的国家队入场都是单日数百亿元。</p>
+        <div class="rp-chart tall dash-skeleton" id="chart-etf" data-source="etf history"></div>
+      </div>
+      <div id="card-breadth" style="min-width:0">
+        <h2>上涨家数减下跌家数（近 60 个交易日）</h2>
+        <div class="rp-chart tall dash-skeleton" id="chart-breadth" data-source="breadth history"></div>
+      </div>
+      <div id="card-limit" style="min-width:0">
+        <h2>涨停与跌停家数（近 60 个交易日）</h2>
+        <div class="rp-chart tall dash-skeleton" id="chart-limit" data-source="breadth history"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="rp-card" id="signal-log">
+    <h2>信号记录（2024 年以来）</h2>
+    <p class="rp-note">按日期倒序。△B 在漫长下跌中会反复出现，★S 和 ▽S 在牛市中途也会出现，所以都按信号分批；跌破月线 BBI 时，剩下的仓位离场。</p>
+    <div class="rp-sig-box">
+      <table class="rp-table" id="sig-table" data-source="signals" data-row-key="date,name">
+        <thead><tr><th data-field="date">日期</th><th data-field="name">指数</th><th data-field="type">信号</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="rp-card" id="method">
+    <h2>指标说明</h2>
+    <dl class="rp-defs">
+      <dt>情绪温度</dt><dd>全市场约 5500 只 A 股每天的上涨占比、净涨停、炸板率、最高连板、晋级率、昨日涨停股表现、60 日新高减新低、站上均线比例、成交额，以及融资余额变化，各自和过去 2–3 年比较取分位后平均。只用过去的数据，每天收盘即可算出。</dd>
+      <dt>★S 二级顶部</dt><dd>一年高点附近、近 5 日情绪曾 ≥84，当天出现带上影线、实体跌幅 ≥1% 且收破 5 日线的阴线。上证指数约每年 1.5 次；之后 60 天下跌概率约 52%（基准 48%），之后 20 天反而多数上涨。</dd>
+      <dt>▽S 一级顶部</dt><dd>情绪 5 日内曾 ≥93（过热），当天向下跌破 70，且指数仍在一年高点 5% 以内。标出过 2007-10、2015-06、2018-01、2021-01、2026-05-14 等高点，也会出现在牛市中途。1995 年以来上证和深证之后 60 天下跌概率约 50–60%，统计优势弱。A 股的顶部信号整体弱于底部信号：底部常是一次集中恐慌，顶部是缓慢派发，强势时惯性大。两种顶部信号都只适合分批止盈。</dd>
+      <dt>△B / ★B 底部信号</dt><dd>△B：用当日最低价算的情绪 ≤10，且离 120 日高点的回撤 ≥11 倍日波动率。★B：再叠加该指数下跌家数 ≥92%，且距高点已 ≥30 个交易日。回测之后 60 天上涨概率：△B 53%，★B 62%（基准 50%）。熊市初期最容易失败。</dd>
+      <dt>★★B 三级底部</dt><dd>★B 出现后 5 个交易日内，再满足下面任一条件：全市场中线温度 ≤10，或上交所宽基 ETF 单日净申购 ≥200 亿元（国家队入场；份额次日公布，所以晚一天确认）。2011 年以来约 12 轮（2011-09、2016-01、2018-10、2022-04、2022-09、2022-10、2024-01、2025-04、2026-07），之后 60 天平均上涨约 8%，上涨概率约 89%，信号后 60 天内再跌的中位数约 4%。三个条件同时满足只有 2024 年 1 月一次，太少，所以用"任一"。</dd>
+      <dt>破月BBI</dt><dd>月线 BBI = 月收盘价 3、6、12、24 个月均线的平均；当月还没走完时用当天收盘价代替本月收盘，和通达信月线图一致。收盘连续两天在它下方时标记，之后要先回到上方才会再标。每年约 3 次，在线附近来回时会连续出现。回测中作为剩余仓位的离场条件，7 个指数平均最大回撤从约 45% 降到约 27%。</dd>
+      <dt>数据来源</dt><dd>通达信本地日线（指数、全部个股、指数成分股涨跌家数），两融账户统计，上交所 ETF 每日份额，新浪 ETF 日线。每个交易日收盘后更新。以上为历史统计，不构成投资建议。</dd>
+    </dl>
+  </section>
+</div>
+<script>
+(() => {
+  const C = () => dash.colors;
+  const parse = (s) => new Date(s + 'T00:00:00Z');
+  const md = d3.utcFormat('%-m月%-d日');
+  const mdShort = d3.utcFormat('%-m/%-d');
+  const ymd = d3.utcFormat('%Y年%-m月%-d日');
+  const f0 = d3.format(',.0f'), f1 = d3.format(',.1f'), f2 = d3.format(',.2f');
+  const sgn1 = (v) => (v > 0 ? '+' : '') + f1(v);
+  const sgn2 = (v) => (v > 0 ? '+' : '') + f2(v);
+  const nv = (v, f) => (v == null ? '—' : f(v));
+  const zoneMid = (v) => v < 20 ? '恐慌区' : v < 40 ? '偏冷' : v < 60 ? '中性' : v < 80 ? '偏热' : '过热区';
+  const zoneShort = (v) => v < 10 ? '短期极冷（易反弹）' : v > 90 ? '短期极热' : '短期中性';
+  const zoneHeat = (v) => v < 20 ? '极冷' : v < 40 ? '偏冷' : v < 60 ? '中性' : v < 90 ? '偏热' : '极热';
+  const PX = { sh: '上证指数', hs300: '沪深300', sz: '深证成指', cyb: '创业板指', kc50: '科创50' };
+  const SIG = { B3: { label: '★★B 三级底部', color: 'var(--color-bad)', sym: '★' },
+    S: { label: '★S 二级顶部', color: 'var(--color-ok)', sym: '▼', above: true }, S1: { label: '▽S 一级顶部', color: 'var(--color-ok)', sym: '▽', above: true },
+    B2: { label: '★B 二级底部', color: 'var(--color-bad)', sym: '▲' }, B1: { label: '△B 一级底部', color: 'var(--color-warn)', sym: '△' },
+    M: { label: '破 跌破月线BBI', color: 'var(--color-fg-muted)', sym: '破', above: true } };
+  let pxKey = 'sh';
+
+  const legend = document.getElementById('sig-legend');
+  legend.replaceChildren(...Object.values(SIG).map((s) => {
+    const sp = document.createElement('span');
+    const i = document.createElement('span'); i.textContent = s.sym; i.style.color = s.color;
+    sp.append(i, document.createTextNode(s.label)); return sp;
+  }));
+  const hideTips = (except) => document.querySelectorAll('.rp-tip').forEach((t) => {
+    if (!except || !t.parentElement.contains(except)) { t.hidden = true; if (t.parentElement.__hide) t.parentElement.__hide(); }
+  });
+  document.addEventListener('pointermove', (e) => hideTips(e.target), { passive: true });
+  document.addEventListener('pointerdown', (e) => hideTips(e.target), { passive: true });
+  document.addEventListener('scroll', () => hideTips(null), { passive: true, capture: true });
+  document.addEventListener('pointerleave', () => hideTips(null));
+  window.addEventListener('blur', () => hideTips(null));
+  const sel = document.getElementById('px-sel');
+  sel.addEventListener('change', () => { pxKey = sel.value; dash.setParams({ px: sel.value }); });
+
+  function fail(box) { box.querySelectorAll('svg').forEach((s) => s.remove()); const d = document.createElement('div'); d.className = 'rp-fail'; d.textContent = 'Failed to load'; box.appendChild(d); }
+  function setMark(sel, txt) { document.querySelectorAll(sel).forEach((el) => { el.textContent = txt; el.classList.remove('dash-skeleton'); }); }
+  function measure(svg, texts) {
+    const t = svg.append('text').attr('class', 'rp-lbl').attr('x', -999).attr('y', -999);
+    let w = 0; texts.forEach((s) => { t.text(s); w = Math.max(w, t.node().getComputedTextLength()); }); t.remove(); return w;
+  }
+  function tipBox(box) { let t = box.querySelector(':scope > .rp-tip'); if (!t) { t = document.createElement('div'); t.className = 'rp-tip'; t.hidden = true; box.appendChild(t); } return t; }
+  function tipRow(color, name, value) {
+    const r = document.createElement('div');
+    if (color) { const s = document.createElement('span'); s.className = 'sw'; s.style.background = color; r.appendChild(s); }
+    r.appendChild(document.createTextNode(name ? name + ' ' + value : value)); return r;
+  }
+  function tipHead(date) { const h = document.createElement('div'); h.className = 'd'; h.textContent = ymd(parse(date)); return h; }
+  function placeTip(tip, box, x, y) {
+    tip.hidden = false; const bw = box.clientWidth, tw = tip.offsetWidth;
+    tip.style.left = Math.max(0, Math.min(bw - tw, x + 12)) + 'px'; tip.style.top = Math.max(0, y - 10) + 'px';
+  }
+  function gridY(svg, y, ticks, x0, x1, fmt) {
+    svg.append('g').selectAll('line').data(ticks).join('line').attr('x1', x0).attr('x2', x1).attr('y1', (d) => y(d)).attr('y2', (d) => y(d)).attr('stroke', 'var(--cds-chart-grid)');
+    svg.append('g').attr('class', 'rp-axis').selectAll('text').data(ticks).join('text').attr('x', x0 - 6).attr('y', (d) => y(d)).attr('dy', '0.32em').attr('text-anchor', 'end').text(fmt);
+  }
+
+  // 单张折线图（时间轴）
+  function lineChart(box, rows, o) {
+    box.querySelectorAll('svg').forEach((s) => s.remove()); tipBox(box).hidden = true;
+    const W = Math.max(260, box.clientWidth), H = o.height || 210;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const vals = o.series.flatMap((s) => rows.map((r) => r[s.key]).filter((v) => v != null));
+    let dom = o.y || d3.extent(vals); if (!o.y) { const pad = (dom[1] - dom[0]) * 0.08 || 1; dom = [dom[0] - pad, dom[1] + pad]; }
+    const y = d3.scaleLinear().domain(dom);
+    const ticks = o.yTicks || y.ticks(4); const yf = o.yFmt || f0;
+    const endTexts = o.endLabels ? o.series.map((s) => { const last = [...rows].reverse().find((r) => r[s.key] != null); return last ? s.label + ' ' + (s.fmt || yf)(last[s.key]) : ''; }) : [];
+    const m = { t: 10, b: 22, l: measure(svg, ticks.map(yf)) + 8, r: o.endLabels ? measure(svg, endTexts) + 10 : 12 };
+    y.range([H - m.b, m.t]);
+    const x = d3.scaleUtc().domain(d3.extent(rows, (r) => parse(r.date))).range([m.l, W - m.r]);
+    (o.bands || []).forEach((b) => svg.append('rect').attr('x', m.l).attr('width', W - m.l - m.r).attr('y', y(b.y1)).attr('height', Math.max(0, y(b.y0) - y(b.y1))).attr('fill', b.fill).attr('opacity', 0.12));
+    gridY(svg, y, ticks, m.l, W - m.r, yf);
+    const nx = Math.max(2, Math.min(6, Math.floor((W - m.l - m.r) / 90)));
+    svg.append('g').attr('class', 'rp-axis').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(nx).tickFormat(o.xFmt || d3.utcFormat('%-m月')).tickSizeOuter(0)).attr('font-size', null).attr('font-family', null)
+      .call((g) => g.selectAll('.domain,line').attr('stroke', 'var(--cds-chart-axis)'));
+    (o.refs || []).forEach((v) => svg.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', y(v)).attr('y2', y(v)).attr('stroke', 'var(--cds-chart-reference)').attr('stroke-dasharray', '4 3'));
+    o.series.forEach((s) => svg.append('path').datum(rows).attr('fill', 'none').attr('stroke', s.color).attr('stroke-width', s.width || 2).attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round')
+      .attr('stroke-dasharray', s.dash || null).attr('d', d3.line().defined((r) => r[s.key] != null).x((r) => x(parse(r.date))).y((r) => y(r[s.key]))));
+    if (o.endLabels) {
+      const pts = o.series.map((s, i) => { const last = [...rows].reverse().find((r) => r[s.key] != null); return last ? { y: y(last[s.key]), t: endTexts[i] } : null; }).filter(Boolean).sort((a, b) => a.y - b.y);
+      for (let i = 1; i < pts.length; i++) if (pts[i].y - pts[i - 1].y < 13) pts[i].y = pts[i - 1].y + 13;
+      pts.forEach((p) => svg.append('text').attr('class', 'rp-endlbl').attr('x', W - m.r + 6).attr('y', p.y).attr('dy', '0.32em').text(p.t));
+    }
+    (o.markers || []).forEach((mk) => svg.append('text').attr('x', x(parse(mk.date))).attr('y', y(mk.y) + (mk.below ? 17 : -8)).attr('text-anchor', 'middle')
+      .attr('font-size', 15).attr('font-weight', 700).attr('fill', mk.color).attr('stroke', 'var(--color-panel)').attr('stroke-width', 3).attr('paint-order', 'stroke').text(mk.sym));
+    const tip = tipBox(box);
+    const rule = svg.append('line').attr('y1', m.t).attr('y2', H - m.b).attr('stroke', 'var(--cds-chart-axis)').attr('opacity', 0);
+    const dots = o.series.map((s) => svg.append('circle').attr('r', 3.5).attr('fill', s.color).attr('opacity', 0));
+    const bis = d3.bisector((r) => parse(r.date)).center;
+    svg.append('rect').attr('x', m.l).attr('y', m.t).attr('width', W - m.l - m.r).attr('height', H - m.t - m.b).attr('fill', 'transparent')
+      .on('pointermove', (ev) => {
+        const [px] = d3.pointer(ev); const r = rows[bis(rows, x.invert(px))]; if (!r) return;
+        const cx = x(parse(r.date)); rule.attr('x1', cx).attr('x2', cx).attr('opacity', 1);
+        o.series.forEach((s, k) => { const v = r[s.key]; dots[k].attr('cx', cx).attr('cy', v == null ? -99 : y(v)).attr('opacity', v == null ? 0 : 1); });
+        tip.replaceChildren(tipHead(r.date), ...o.series.map((s) => tipRow(o.series.length > 1 ? s.color : null, s.label, nv(r[s.key], s.fmt || yf))), ...(o.tipExtra ? o.tipExtra(r) : []));
+        const bb = box.getBoundingClientRect(), sb = svg.node().getBoundingClientRect();
+        placeTip(tip, box, (cx / W) * sb.width + (sb.left - bb.left), ev.clientY - bb.top);
+      })
+      .on('pointerleave', () => { tip.hidden = true; rule.attr('opacity', 0); dots.forEach((d) => d.attr('opacity', 0)); });
+    box.__hide = () => { rule.attr('opacity', 0); dots.forEach((d) => d.attr('opacity', 0)); };
+  }
+
+  // 上：指数价格；下：指标（折线或正负柱）。共用按交易日排列的横轴，悬停同步。
+  function pairChart(box, rows, price, o) {
+    box.querySelectorAll('svg').forEach((s) => s.remove()); tipBox(box).hidden = true;
+    const W = Math.max(260, box.clientWidth), Hp = 92, gap = 10, Hi = o.height || 150, H = Hp + gap + Hi + 22;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const pv = rows.map((r) => price.get(r.date)).filter((v) => v != null);
+    const yp = d3.scaleLinear().domain(d3.extent(pv)).nice(3);
+    const pt = yp.ticks(3);
+    let yi, it, ifmt = o.yFmt || f0;
+    if (o.kind === 'bar') { yi = d3.scaleLinear().domain(d3.extent([0, ...rows.map((r) => r[o.barKey] ?? 0)])).nice(4); }
+    else { const vs = o.series.flatMap((s) => rows.map((r) => r[s.key]).filter((v) => v != null)); yi = d3.scaleLinear().domain(o.y || d3.extent(vs)).nice(4); }
+    it = o.yTicks || yi.ticks(4);
+    const endTexts = o.kind === 'line' && o.series.length > 1 ? o.series.map((s) => { const last = [...rows].reverse().find((r) => r[s.key] != null); return last ? s.label + ' ' + (s.fmt || ifmt)(last[s.key]) : ''; }) : [];
+    const m = { l: Math.max(measure(svg, pt.map(f0)), measure(svg, it.map(ifmt))) + 8, r: endTexts.length ? measure(svg, endTexts) + 10 : 10 };
+    yp.range([Hp, 6]); yi.range([Hp + gap + Hi, Hp + gap + 4]);
+    const x = d3.scaleBand().domain(rows.map((r) => r.date)).range([m.l, W - m.r]).padding(o.kind === 'bar' ? 0.2 : 0);
+    const cx = (r) => x(r.date) + x.bandwidth() / 2;
+    // 价格面板
+    gridY(svg, yp, pt, m.l, W - m.r, f0);
+    svg.append('text').attr('class', 'rp-lbl').attr('x', m.l + 4).attr('y', 14).text(PX[pxKey]);
+    svg.append('path').datum(rows).attr('fill', 'none').attr('stroke', 'var(--color-fg-muted)').attr('stroke-width', 1.5).attr('stroke-linejoin', 'round')
+      .attr('d', d3.line().defined((r) => price.get(r.date) != null).x(cx).y((r) => yp(price.get(r.date))));
+    // 指标面板
+    (o.bands || []).forEach((b) => svg.append('rect').attr('x', m.l).attr('width', W - m.l - m.r).attr('y', yi(b.y1)).attr('height', Math.max(0, yi(b.y0) - yi(b.y1))).attr('fill', b.fill).attr('opacity', 0.12));
+    gridY(svg, yi, it, m.l, W - m.r, ifmt);
+    if (o.kind === 'bar') {
+      svg.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', yi(0)).attr('y2', yi(0)).attr('stroke', 'var(--cds-chart-axis)');
+      const bw = Math.min(32, x.bandwidth());
+      svg.append('g').selectAll('rect').data(rows).join('rect').attr('x', (r) => x(r.date) + (x.bandwidth() - bw) / 2).attr('width', bw)
+        .attr('y', (r) => yi(Math.max(0, r[o.barKey] ?? 0))).attr('height', (r) => Math.abs(yi(r[o.barKey] ?? 0) - yi(0))).attr('rx', Math.min(2, bw / 2))
+        .attr('fill', (r) => ((r[o.barKey] ?? 0) >= 0 ? o.pos : o.neg));
+    } else {
+      o.series.forEach((s) => svg.append('path').datum(rows).attr('fill', 'none').attr('stroke', s.color).attr('stroke-width', 2).attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round')
+        .attr('d', d3.line().defined((r) => r[s.key] != null).x(cx).y((r) => yi(r[s.key]))));
+      if (endTexts.length) {
+        const pts = o.series.map((s, i) => { const last = [...rows].reverse().find((r) => r[s.key] != null); return last ? { y: yi(last[s.key]), t: endTexts[i] } : null; }).filter(Boolean).sort((a, b) => a.y - b.y);
+        for (let i = 1; i < pts.length; i++) if (pts[i].y - pts[i - 1].y < 13) pts[i].y = pts[i - 1].y + 13;
+        pts.forEach((p) => svg.append('text').attr('class', 'rp-endlbl').attr('x', W - m.r + 6).attr('y', p.y).attr('dy', '0.32em').text(p.t));
+      }
+    }
+    // 横轴
+    const n = Math.max(2, Math.floor((W - m.l - m.r) / 70)); const step = Math.ceil(rows.length / n);
+    const xf = rows.length > 130 ? d3.utcFormat('%-m月') : mdShort;
+    svg.append('g').attr('class', 'rp-axis').selectAll('text').data(rows.filter((r, i) => i % step === 0)).join('text')
+      .attr('x', cx).attr('y', H - 6).attr('text-anchor', 'middle').text((r) => xf(parse(r.date)));
+    // 悬停
+    const tip = tipBox(box);
+    const rule = svg.append('line').attr('y1', 4).attr('y2', Hp + gap + Hi).attr('stroke', 'var(--cds-chart-axis)').attr('opacity', 0);
+    svg.append('rect').attr('x', m.l).attr('y', 0).attr('width', W - m.l - m.r).attr('height', Hp + gap + Hi).attr('fill', 'transparent')
+      .on('pointermove', (ev) => {
+        const [px] = d3.pointer(ev); const i = Math.max(0, Math.min(rows.length - 1, Math.floor((px - m.l) / x.step()))); const r = rows[i];
+        rule.attr('x1', cx(r)).attr('x2', cx(r)).attr('opacity', 1);
+        tip.replaceChildren(tipHead(r.date), tipRow(null, PX[pxKey], nv(price.get(r.date), f2)), ...o.tip(r));
+        const bb = box.getBoundingClientRect(), sb = svg.node().getBoundingClientRect();
+        placeTip(tip, box, (cx(r) / W) * sb.width + (sb.left - bb.left), ev.clientY - bb.top);
+      })
+      .on('pointerleave', () => { tip.hidden = true; rule.attr('opacity', 0); });
+    box.__hide = () => rule.attr('opacity', 0);
+  }
+
+  function fillTable(sel, rows, cells) {
+    const body = document.querySelector(sel + ' tbody');
+    body.replaceChildren(...rows.map((r) => { const tr = document.createElement('tr'); cells(r).forEach((c) => { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); }); return tr; }));
+  }
+
+  function takeaway(s, idx) {
+    const parts = s.mid_temp != null
+      ? [`${md(parse(s.date))}：中线温度${zoneMid(s.mid_temp)}，${zoneShort(s.short_temp)}，融资与成交额${s.heat != null ? zoneHeat(s.heat) : '暂缺'}。`]
+      : [`${md(parse(s.date))}：`];
+    if (s.gap_days > 0 && s.breadth_date) parts.push(`全市场个股数据只到 ${md(parse(s.breadth_date))}（缺 ${s.gap_days} 个交易日），温度和涨跌家数暂停在那天；打开通达信 → 盘后数据下载 补齐后再更新。指数情绪和信号不受影响。`);
+    const by = (k) => idx.filter((r) => (r.signal || '').split('、').includes(k)).map((r) => r.name);
+    const b3 = by('★★B'), b2 = by('★B'), b1 = by('△B'), st = by('★S'), mb = by('破');
+    if (b3.length) parts.push(`${b3.join('、')}出现 ★★B 三级底部信号（★B 叠加中线温度极低或国家队大额申购）。`);
+    if (b2.length) parts.push(`${b2.join('、')}出现 ★B 二级底部信号。`);
+    if (b1.length) parts.push(`${b1.join('、')}出现 △B 一级底部信号。`);
+    const s1 = by('▽S');
+    if (st.length) parts.push(`${st.join('、')}出现 ★S 二级顶部信号。`);
+    if (s1.length) parts.push(`${s1.join('、')}出现 ▽S 一级顶部信号。`);
+    if (mb.length) parts.push(`${mb.join('、')}收盘连续两天跌破月线 BBI。`);
+    if (!b3.length && !b2.length && !b1.length && !st.length && !s1.length && !mb.length) parts.push('今天各指数没有顶底信号。');
+    const os = idx.filter((r) => r.senti != null && r.senti <= 15).map((r) => r.name);
+    if (os.length) parts.push(`${os.join('、')}情绪处于超卖区。`);
+    if (s.etf_net_yi != null) parts.push(`宽基 ETF ${s.etf_net_yi >= 0 ? '净申购' : '净赎回'}。`);
+    return parts.join('');
+  }
+
+  function miniGroup(box, rows, list, colorOffset) {
+    box.replaceChildren();
+    // 先把四个格子都放进网格，再统一画，避免第一张图按整行宽度绘制
+    const cells = list.map(([k, name]) => {
+      const wrap = document.createElement('div'); wrap.style.minWidth = '0';
+      const last = [...rows].reverse().find((r) => r[k] != null);
+      const t = document.createElement('div'); t.className = 'rp-mini-t'; t.textContent = `${name} · 最新 ${last ? f1(last[k]) : '—'}`;
+      const b = document.createElement('div'); b.className = 'rp-mini';
+      wrap.append(t, b); box.appendChild(wrap); return b;
+    });
+    cells.forEach((b, i) => {
+      const [k, name] = list[i];
+      lineChart(b, rows, { height: 140, y: [0, 100], yTicks: [0, 15, 50, 93], refs: [15, 93], series: [{ key: k, label: name, color: C()[(colorOffset + i) % C().length], fmt: f1 }] });
+    });
+  }
+
+  dash.onData(() => {
+    pxKey = dash.params().px || pxKey; if (sel.value !== pxKey) sel.value = pxKey;
+    const S = dash.data('summary'), I = dash.data('indexes'), Hh = dash.data('history'), B = dash.data('breadth'), E = dash.data('etf'), G = dash.data('signals'), D = dash.data('daily');
+
+    if (S.status === 'ok' && S.data.length) setMark('[data-source="summary"][data-field="date"]', ymd(parse(S.data[0].date)));
+    const take = document.getElementById('takeaway');
+    if (S.status === 'ok' && I.status === 'ok' && S.data.length) { take.textContent = takeaway(S.data[0], I.data); take.classList.remove('dash-skeleton'); }
+
+    if (D.status === 'ok') fillTable('#daily-table', D.data, (r) => [r.date, nv(r.sh, f2), nv(r.sh_pct, sgn2), nv(r.mid_temp, f1), nv(r.short_temp, f1), nv(r.heat, f1),
+      nv(r.amount_yi, f0), nv(r.up, f0), nv(r.down, f0), nv(r.zt, f0), nv(r.dt, f0), nv(r.margin_yi, f0), nv(r.margin_chg_yi, sgn1), nv(r.etf_net_yi, sgn1), r.signals]);
+    if (I.status === 'ok') fillTable('#idx-table', I.data, (r) => [r.name, r.group === '市值' ? '按市值' : '按板块', f2(r.close), sgn2(r.pct), f1(r.senti), r.signal,
+      nv(r.adv, f0), nv(r.dec, f0), f1(r.dist_high), r.last_top ?? '—', r.last_s1 ?? '—', r.last_b3 ?? '—', r.last_b2 ?? '—', r.last_b1 ?? '—', r.last_m ?? '—']);
+    if (G.status === 'ok') fillTable('#sig-table', G.data, (r) => [r.date, r.name, r.type]);
+
+    const ids = ['chart-sh', 'chart-temp', 'chart-senti-a', 'chart-senti-b', 'chart-heat', 'chart-etf', 'chart-breadth', 'chart-limit'];
+    const box = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
+    if (Hh.status === 'ok') {
+      ['chart-sh', 'chart-temp', 'chart-senti-a', 'chart-senti-b', 'chart-heat'].forEach((id) => box[id].classList.remove('dash-skeleton'));
+      const rows = Hh.data;
+      const price = new Map(rows.map((r) => [r.date, r[pxKey]]));
+      const markers = rows.filter((r) => r.sig_sh && SIG[r.sig_sh]).map((r) => ({ date: r.date, y: r.sh, sym: SIG[r.sig_sh].sym, color: SIG[r.sig_sh].color, below: !SIG[r.sig_sh].above }));
+      lineChart(box['chart-sh'], rows, { height: 260, series: [{ key: 'sh', label: '上证指数', color: 'var(--color-fg)', width: 1.5, fmt: f2 }, { key: 'bbi_sh', label: '月线BBI', color: 'var(--cds-chart-muted)', width: 1.2, dash: '4 3', fmt: f2 }], markers, tipExtra: (r) => (r.sig_sh && SIG[r.sig_sh] ? [tipRow(null, '', SIG[r.sig_sh].label)] : []) });
+      lineChart(box['chart-temp'], rows, { height: 260, y: [0, 100], yTicks: [0, 10, 20, 50, 80, 90, 100], endLabels: true, bands: [{ y0: 0, y1: 20, fill: C()[0] }, { y0: 80, y1: 100, fill: C()[1] }],
+        series: [{ key: 'mid_temp', label: '中线', color: C()[0], fmt: f1 }, { key: 'short_temp', label: '短线', color: 'var(--cds-chart-muted)', width: 1.5, fmt: f1 }] });
+      const recent = rows.slice(-120);
+      miniGroup(box['chart-senti-a'], recent, [['s_sz50', '上证50'], ['s_hs300', '沪深300'], ['s_zz500', '中证500'], ['s_zz1000', '中证1000']], 0);
+      miniGroup(box['chart-senti-b'], recent, [['s_sh', '上证指数'], ['s_sz', '深证成指'], ['s_cyb', '创业板指'], ['s_kc50', '科创50']], 4);
+      pairChart(box['chart-heat'], rows, price, { kind: 'line', y: [0, 100], yTicks: [0, 50, 90], bands: [{ y0: 90, y1: 100, fill: C()[1] }], series: [{ key: 'heat', label: '过热分数', color: C()[1], fmt: f1 }],
+        tip: (r) => [tipRow(null, '过热分数', nv(r.heat, f1))] });
+      if (E.status === 'ok') {
+        box['chart-etf'].classList.remove('dash-skeleton');
+        pairChart(box['chart-etf'], E.data, price, { kind: 'bar', barKey: 'net_yi', pos: 'var(--color-bad)', neg: 'var(--color-ok)',
+          tip: (r) => [tipRow(null, '净申购', nv(r.net_yi, sgn1) + ' 亿元'), tipRow(null, '其中沪深300类', nv(r.net_300_yi, sgn1) + ' 亿元'), tipRow(null, '成交额倍数（中位）', nv(r.ratio_med, f2))] });
+      } else if (E.status === 'error') fail(box['chart-etf']);
+      if (B.status === 'ok') {
+        box['chart-breadth'].classList.remove('dash-skeleton'); box['chart-limit'].classList.remove('dash-skeleton');
+        const br = B.data.map((r) => ({ ...r, net: (r.up ?? 0) - (r.down ?? 0) }));
+        pairChart(box['chart-breadth'], br, price, { kind: 'bar', barKey: 'net', pos: 'var(--color-bad)', neg: 'var(--color-ok)', tip: (r) => [tipRow(null, '上涨', f0(r.up)), tipRow(null, '下跌', f0(r.down))] });
+        pairChart(box['chart-limit'], B.data, price, { kind: 'line', series: [{ key: 'zt', label: '涨停', color: C()[1] }, { key: 'dt', label: '跌停', color: C()[0] }],
+          tip: (r) => [tipRow(C()[1], '涨停', f0(r.zt)), tipRow(C()[0], '跌停', f0(r.dt)), tipRow(null, '炸板', f0(r.zb)), tipRow(null, '最高连板', f0(r.max_lb))] });
+      } else if (B.status === 'error') { fail(box['chart-breadth']); fail(box['chart-limit']); }
+    } else if (Hh.status === 'error') ids.forEach((id) => fail(box[id]));
+  });
+})();
+</script>
