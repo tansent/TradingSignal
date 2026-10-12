@@ -77,12 +77,12 @@
 
   <section class="rp-card" id="index-signals">
     <h2>各指数情绪与顶底信号</h2>
-    <p class="rp-note">"按市值"四个指数对应 A 股四个股指期货（IH、IF、IC、IM），从超大盘到小盘；"按板块"是上证、深证、创业板、科创板。中证500 和中证1000 走势高度重合（相关系数 0.96），深证成指和创业板指也是（0.95）；科创50 和其他指数差别最大。情绪 ≤15 超卖、≥93 过热。信号：★S 二级顶部、▽S 一级顶部、破 = 收盘连续两天跌破月线 BBI；△B 一级底部、★B 二级底部、★★B 三级底部。除 ★★B 外都与通达信公式 DINGDI 一致；★★B 要用全市场中线温度和 ETF 申购数据，只在日报里有。成分股涨跌：科创50 一栏为整个科创板的家数。</p>
+    <p class="rp-note">"按市值"四个指数对应 A 股四个股指期货（IH、IF、IC、IM），从超大盘到小盘；"按板块"是上证、深证、创业板、科创板。中证500 和中证1000 走势高度重合（相关系数 0.96），深证成指和创业板指也是（0.95）；科创50 和其他指数差别最大。情绪 ≤15 超卖、≥93 过热。信号：★S 二级顶部、▽S 一级顶部、破 = 收盘连续两天跌破月线 BBI；△B 一级底部、★B 二级底部、★★B 三级底部。除 ★★B 外都与通达信公式 DINGDI 一致；★★B 要用全市场中线温度和 ETF 申购数据，只在日报里有。成分股涨跌：科创50 一栏为整个科创板的家数。周线区域显示起止日期，结束日期是没有新周线信号时的到期日。</p>
     <div class="rp-scroll">
       <table class="rp-table" id="idx-table" data-source="indexes" data-row-key="name">
         <thead><tr>
           <th data-field="name">指数</th><th data-field="group">分组</th><th data-field="close">收盘</th><th data-field="pct">涨跌 %</th>
-          <th data-field="senti">情绪</th><th data-field="signal">今日信号</th>
+          <th data-field="senti">情绪</th><th data-field="signal">今日信号</th><th data-field="wzone">周线区域</th>
           <th data-field="adv">成分股上涨</th><th data-field="dec">成分股下跌</th>
           <th data-field="dist_high">距一年高点 %</th>
           <th data-field="last_top">最近 ★S</th><th data-field="last_s1">最近 ▽S</th><th data-field="last_b3">最近 ★★B</th><th data-field="last_b2">最近 ★B</th><th data-field="last_b1">最近 △B</th><th data-field="last_m">最近 破月BBI</th>
@@ -103,7 +103,8 @@
 
   <section class="rp-grid">
     <div class="rp-card" id="card-sh">
-      <h2>上证指数与顶底信号（近一年，虚线为月线 BBI）</h2>
+      <h2>上证指数与顶底信号（近一年）</h2>
+      <p class="rp-note">虚线为月线 BBI；浅绿底色为周线顶部区域，浅红底色为周线底部区域。</p>
       <div class="rp-legend" id="sig-legend"></div>
       <div class="rp-chart tall dash-skeleton" id="chart-sh" data-source="history"></div>
     </div>
@@ -161,6 +162,7 @@
       <dt>△B / ★B 底部信号</dt><dd>△B：用当日最低价算的情绪 ≤10，且离 120 日高点的回撤 ≥11 倍日波动率。★B：再叠加该指数下跌家数 ≥92%，且距高点已 ≥30 个交易日。回测之后 60 天上涨概率：△B 53%，★B 62%（基准 50%）。熊市初期最容易失败。</dd>
       <dt>★★B 三级底部</dt><dd>★B 出现后 5 个交易日内，再满足下面任一条件：全市场中线温度 ≤10，或上交所宽基 ETF 单日净申购 ≥200 亿元（国家队入场；份额次日公布，所以晚一天确认）。2011 年以来约 12 轮（2011-09、2016-01、2018-10、2022-04、2022-09、2022-10、2024-01、2025-04、2026-07），之后 60 天平均上涨约 8%，上涨概率约 89%，信号后 60 天内再跌的中位数约 4%。三个条件同时满足只有 2024 年 1 月一次，太少，所以用"任一"。</dd>
       <dt>破月BBI</dt><dd>月线 BBI = 月收盘价 3、6、12、24 个月均线的平均；当月还没走完时用当天收盘价代替本月收盘，和通达信月线图一致。收盘连续两天在它下方时标记，之后要先回到上方才会再标。每年约 3 次，在线附近来回时会连续出现。回测中作为剩余仓位的离场条件，7 个指数平均最大回撤从约 45% 降到约 27%。</dd>
+      <dt>周线区域</dt><dd>同一套公式用在周线上（窗口约拉长 5 倍，"一年高点"变成约 5 年高点）。周线 △B/★B 之后 26 周为底部区域，周线 ★S/▽S 之后 26 周为顶部区域；新信号重新计时，反方向信号结束当前区域；从信号周的下一周起生效。与通达信公式 ZQ 一致（QXZB 副图里的绿/红色带）。2015 年以来，周线顶部区域里出现的日线 △B，之后 60 天上涨的比例约 37%，底部区域里约 68%。回测中"只在底部区域按日线 B 分批买、只在顶部区域按日线 S 分批卖"，在创业板上收益接近周线全进全出、回撤小 8–20 个百分点；在其他指数上没有明显优势，样本也只有两三轮大行情。</dd>
       <dt>数据来源</dt><dd>通达信本地日线（指数、全部个股、指数成分股涨跌家数），两融账户统计，上交所 ETF 每日份额，新浪 ETF 日线。每个交易日收盘后更新。以上为历史统计，不构成投资建议。</dd>
     </dl>
   </section>
@@ -239,6 +241,7 @@
     y.range([H - m.b, m.t]);
     const x = d3.scaleUtc().domain(d3.extent(rows, (r) => parse(r.date))).range([m.l, W - m.r]);
     (o.bands || []).forEach((b) => svg.append('rect').attr('x', m.l).attr('width', W - m.l - m.r).attr('y', y(b.y1)).attr('height', Math.max(0, y(b.y0) - y(b.y1))).attr('fill', b.fill).attr('opacity', 0.12));
+    (o.xbands || []).forEach((b) => { const a = x(parse(b.from)), z = x(parse(b.to)); svg.append('rect').attr('x', a).attr('width', Math.max(1, z - a)).attr('y', m.t).attr('height', H - m.b - m.t).attr('fill', b.fill).attr('opacity', 0.1); });
     gridY(svg, y, ticks, m.l, W - m.r, yf);
     const nx = Math.max(2, Math.min(6, Math.floor((W - m.l - m.r) / 90)));
     svg.append('g').attr('class', 'rp-axis').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(nx).tickFormat(o.xFmt || d3.utcFormat('%-m月')).tickSizeOuter(0)).attr('font-size', null).attr('font-family', null)
@@ -335,6 +338,19 @@
     body.replaceChildren(...rows.map((r) => { const tr = document.createElement('tr'); cells(r).forEach((c) => { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); }); return tr; }));
   }
 
+  // 把 wz 序列（1 顶部 / -1 底部 / 0）合成连续区间，用于图上的底色
+  function zoneBands(rows, key) {
+    const out = []; let cur = null;
+    rows.forEach((r) => {
+      const v = r[key] || 0;
+      if (cur && v !== cur.v) { out.push(cur); cur = null; }
+      if (!cur && v) cur = { v, from: r.date };
+      if (cur) cur.to = r.date;
+    });
+    if (cur) out.push(cur);
+    return out.map((b) => ({ from: b.from, to: b.to, fill: b.v > 0 ? 'var(--color-ok)' : 'var(--color-bad)' }));
+  }
+
   function takeaway(s, idx) {
     const parts = s.mid_temp != null
       ? [`${md(parse(s.date))}：中线温度${zoneMid(s.mid_temp)}，${zoneShort(s.short_temp)}，融资与成交额${s.heat != null ? zoneHeat(s.heat) : '暂缺'}。`]
@@ -349,6 +365,10 @@
     if (st.length) parts.push(`${st.join('、')}出现 ★S 二级顶部信号。`);
     if (s1.length) parts.push(`${s1.join('、')}出现 ▽S 一级顶部信号。`);
     if (mb.length) parts.push(`${mb.join('、')}收盘连续两天跌破月线 BBI。`);
+    const wTop = idx.filter((r) => r.wzone === '顶部区域').map((r) => r.name), wBot = idx.filter((r) => r.wzone === '底部区域').map((r) => r.name);
+    if (wTop.length || wBot.length) parts.push(`周线：${[wTop.length ? wTop.join('、') + '处于顶部区域' : '', wBot.length ? wBot.join('、') + '处于底部区域' : ''].filter(Boolean).join('，')}。`);
+    const bInTop = idx.filter((r) => r.wzone === '顶部区域' && /△B|★B/.test(r.signal || '')).map((r) => r.name);
+    if (bInTop.length) parts.push(`${bInTop.join('、')}的日线底部信号出现在周线顶部区域里：2015 年以来这种位置的 △B 之后 60 天上涨的比例约 37%，60 天内再跌的中位数约 15%。`);
     if (!b3.length && !b2.length && !b1.length && !st.length && !s1.length && !mb.length) parts.push('今天各指数没有顶底信号。');
     const os = idx.filter((r) => r.senti != null && r.senti <= 15).map((r) => r.name);
     if (os.length) parts.push(`${os.join('、')}情绪处于超卖区。`);
@@ -382,7 +402,7 @@
 
     if (D.status === 'ok') fillTable('#daily-table', D.data, (r) => [r.date, nv(r.sh, f2), nv(r.sh_pct, sgn2), nv(r.mid_temp, f1), nv(r.short_temp, f1), nv(r.heat, f1),
       nv(r.amount_yi, f0), nv(r.up, f0), nv(r.down, f0), nv(r.zt, f0), nv(r.dt, f0), nv(r.margin_yi, f0), nv(r.margin_chg_yi, sgn1), nv(r.etf_net_yi, sgn1), r.signals]);
-    if (I.status === 'ok') fillTable('#idx-table', I.data, (r) => [r.name, r.group === '市值' ? '按市值' : '按板块', f2(r.close), sgn2(r.pct), f1(r.senti), r.signal,
+    if (I.status === 'ok') fillTable('#idx-table', I.data, (r) => [r.name, r.group === '市值' ? '按市值' : '按板块', f2(r.close), sgn2(r.pct), f1(r.senti), r.signal, r.wzone ? `${r.wzone.slice(0, 2)} ${mdShort(parse(r.wzone_since))}–${mdShort(parse(r.wzone_until))}` : '—',
       nv(r.adv, f0), nv(r.dec, f0), f1(r.dist_high), r.last_top ?? '—', r.last_s1 ?? '—', r.last_b3 ?? '—', r.last_b2 ?? '—', r.last_b1 ?? '—', r.last_m ?? '—']);
     if (G.status === 'ok') fillTable('#sig-table', G.data, (r) => [r.date, r.name, r.type]);
 
@@ -393,7 +413,8 @@
       const rows = Hh.data;
       const price = new Map(rows.map((r) => [r.date, r[pxKey]]));
       const markers = rows.filter((r) => r.sig_sh && SIG[r.sig_sh]).map((r) => ({ date: r.date, y: r.sh, sym: SIG[r.sig_sh].sym, color: SIG[r.sig_sh].color, below: !SIG[r.sig_sh].above }));
-      lineChart(box['chart-sh'], rows, { height: 260, series: [{ key: 'sh', label: '上证指数', color: 'var(--color-fg)', width: 1.5, fmt: f2 }, { key: 'bbi_sh', label: '月线BBI', color: 'var(--cds-chart-muted)', width: 1.2, dash: '4 3', fmt: f2 }], markers, tipExtra: (r) => (r.sig_sh && SIG[r.sig_sh] ? [tipRow(null, '', SIG[r.sig_sh].label)] : []) });
+      lineChart(box['chart-sh'], rows, { height: 260, series: [{ key: 'sh', label: '上证指数', color: 'var(--color-fg)', width: 1.5, fmt: f2 }, { key: 'bbi_sh', label: '月线BBI', color: 'var(--cds-chart-muted)', width: 1.2, dash: '4 3', fmt: f2 }], markers, xbands: zoneBands(rows, 'wz_sh'),
+        tipExtra: (r) => [...(r.sig_sh && SIG[r.sig_sh] ? [tipRow(null, '', SIG[r.sig_sh].label)] : []), ...(r.wz_sh ? [tipRow(null, '', r.wz_sh > 0 ? '周线顶部区域' : '周线底部区域')] : [])] });
       lineChart(box['chart-temp'], rows, { height: 260, y: [0, 100], yTicks: [0, 10, 20, 50, 80, 90, 100], endLabels: true, bands: [{ y0: 0, y1: 20, fill: C()[0] }, { y0: 80, y1: 100, fill: C()[1] }],
         series: [{ key: 'mid_temp', label: '中线', color: C()[0], fmt: f1 }, { key: 'short_temp', label: '短线', color: 'var(--cds-chart-muted)', width: 1.5, fmt: f1 }] });
       const recent = rows.slice(-120);

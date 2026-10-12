@@ -20,34 +20,11 @@ sys.path.insert(0, str(Path(__file__).parent))
 import dingdi  # noqa: E402
 import strategy_backtest as sb  # noqa: E402
 from tdx_reader import read_day  # noqa: E402
-from weekly_signals import weekly  # noqa: E402
+from weekly_zone import zones  # noqa: E402
 
 IDX = [("上证指数", "sh000001"), ("深证成指", "sz399001"), ("创业板指", "sz399006"), ("沪深300", "sh000300"),
        ("上证50", "sh000016"), ("中证500", "sh000905"), ("中证1000", "sh000852")]
 TIER = lambda r: (0.4 if r["b2"] else 0.2) + (0.2 if r["cold"] else 0) + (0.2 if r["etf"] else 0)  # noqa: E731
-
-
-def zones(daily: pd.DataFrame, zone_weeks: int) -> pd.DataFrame:
-    """周线信号与区域，映射到日线（只用已收盘的周）。"""
-    w = weekly(daily)
-    r = dingdi.compute(w)
-    wb = (r["底部一级"] | r["底部二级"]).to_numpy()
-    wt = (r["顶部"] | r["顶部一级"]).to_numpy()
-    bot_end = top_end = -1
-    in_bot, in_top = [], []
-    for i in range(len(w)):
-        if wb[i]:
-            bot_end, top_end = i + zone_weeks, -1
-        if wt[i]:
-            top_end, bot_end = i + zone_weeks, -1
-        in_bot.append(i <= bot_end)
-        in_top.append(i <= top_end)
-    W = pd.DataFrame({"z_bot": in_bot, "z_top": in_top, "w_buy": wb, "w_sell": wt, "w_brk": r["破月BBI"].to_numpy()}, index=w.index)
-    # 区域从信号周之后的第一个交易日起生效（与通达信 ZQ 公式的 REF(区域,1)#WEEK 一致）；
-    # 周线信号本身在该周最后一个交易日收盘成交
-    zone = W[["z_bot", "z_top"]].astype(float).reindex(daily.index, method="ffill").shift(1).fillna(0).astype(bool)
-    ev = W[["w_buy", "w_sell", "w_brk"]].reindex(daily.index).fillna(False).astype(bool)
-    return zone.join(ev)
 
 
 def run_zone(s: pd.DataFrame, weekly_tranche: bool, safety: bool):

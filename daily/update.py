@@ -26,6 +26,7 @@ import temperature  # noqa: E402
 from overheat_eval import heat  # noqa: E402
 from level3_buy import level3  # noqa: E402
 from tdx_reader import read_day  # noqa: E402
+import weekly_zone  # noqa: E402
 
 DATA = ROOT / "data"
 OUT = ROOT / "report_data"
@@ -164,6 +165,7 @@ def main():
         r = dingdi.compute(df)
         r["底部三级"] = level3(r["底部二级"], t["中线温度"], etf["net_yi"])
         sig[name] = (df, r)
+        wz = weekly_zone.current(df)
         last = r.index.max()
         today = "、".join(day_signals(r, last)) or "无"
         lastd = lambda col: iso(r.index[r[col]].max()) if r[col].any() else None  # noqa: E731
@@ -172,6 +174,8 @@ def main():
             "senti": r["情绪"].iloc[-1], "signal": today, "last_top": lastd("顶部"), "last_s1": lastd("顶部一级"), "last_b2": lastd("底部二级"),
             "last_b1": lastd("底部一级"), "last_b3": lastd("底部三级"), "last_m": lastd("破月BBI"), "dist_high": (df.close.iloc[-1] / df.high.rolling(250).max().iloc[-1] - 1) * 100,
             "adv": df["adv"].iloc[-1], "dec": df["dec"].iloc[-1],
+            "wzone": wz["wzone"] or None, "wzone_since": iso(wz["wzone_since"]), "wzone_until": iso(wz["wzone_until"]),
+            "wsig": wz["wsig"], "wsig_date": iso(wz["wsig_date"]),
         })
     log("6/6 写出数据文件")
     write("indexes", idx_rows)
@@ -202,6 +206,8 @@ def main():
         hist[key] = sig[name][1]["情绪"]
     code = lambda r: np.select([r[c] for c, *_ in SIGNALS], [k for *_, k in SIGNALS], "")  # noqa: E731
     hist["bbi_sh"] = sig["上证指数"][1]["月线BBI"]
+    zsh = weekly_zone.zones(sig["上证指数"][0])
+    hist["wz_sh"] = zsh["z_top"].astype(int) - zsh["z_bot"].astype(int)   # 1 周线顶部区域，-1 底部区域，0 中间
     hist["sig_sh"] = pd.Series(code(sig["上证指数"][1]), index=sig["上证指数"][1].index)
     hist["sig_hs300"] = pd.Series(code(sig["沪深300"][1]), index=sig["沪深300"][1].index)
     write("history", [{"date": iso(d), **row} for d, row in hist.iterrows()])
