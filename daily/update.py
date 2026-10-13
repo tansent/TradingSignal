@@ -35,8 +35,10 @@ V = Path("D:/TDXapp/vipdoc")
 INDEXES = [("上证50", "sh000016", "市值"), ("沪深300", "sh000300", "市值"), ("中证500", "sh000905", "市值"),
            ("中证1000", "sh000852", "市值"), ("上证指数", "sh000001", "板块"), ("深证成指", "sz399001", "板块"),
            ("创业板指", "sz399006", "板块"), ("科创50", "sh000688", "板块")]
+# 8 个指数之外的品种：数据来自新浪 ETF 日线（存 data/etf_extra，不进宽基 ETF 成交放量统计），取不到时用通达信
+EXTRA = [("红利低波ETF", "sh512890", "红利")]
 PRICE_KEYS = {"上证指数": "sh", "沪深300": "hs300", "深证成指": "sz", "创业板指": "cyb", "科创50": "kc50"}
-SENTI_KEYS = {"上证50": "s_sz50", "沪深300": "s_hs300", "中证500": "s_zz500", "中证1000": "s_zz1000",
+SENTI_KEYS = {"红利低波ETF": "s_dlv", "上证50": "s_sz50", "沪深300": "s_hs300", "中证500": "s_zz500", "中证1000": "s_zz1000",
               "上证指数": "s_sh", "深证成指": "s_sz", "创业板指": "s_cyb", "科创50": "s_kc50"}
 # 信号：dingdi 列名、简写、全称、网页图上的代码（按显示优先级排列）
 SIGNALS = [("底部三级", "★★B", "★★B 三级底部", "B3"), ("顶部", "★S", "★S 二级顶部", "S"), ("顶部一级", "▽S", "▽S 一级顶部", "S1"),
@@ -58,6 +60,31 @@ def update_margin_sse():
     new["date"] = pd.to_datetime(new["信用交易日期"].astype(str))
     new = new[["date", "融资余额", "融资买入额", "融资融券余额"]]
     pd.concat([old, new]).drop_duplicates("date", keep="last").sort_values("date").to_csv(f, index=False)
+
+
+def load_extra(code: str, asof) -> pd.DataFrame:
+    f = DATA / "etf_extra" / f"{code}.csv"
+    try:
+        import akshare as ak
+        f.parent.mkdir(exist_ok=True)
+        ak.fund_etf_hist_sina(symbol=code).to_csv(f, index=False)
+    except Exception as e:  # noqa: BLE001
+        log("ETF 日线下载失败，用已有数据或通达信", code, repr(e)[:80])
+    if f.exists():
+        df = pd.read_csv(f, parse_dates=["date"]).set_index("date").sort_index()
+        df = df[["open", "high", "low", "close", "volume", "amount"]].astype(float)
+    else:
+        df = read_day(V / code[:2] / "lday" / f"{code}.day")
+    now = pd.Timestamp.now()
+    if df.index.max() < asof == now.normalize() and now.hour * 60 + now.minute >= 15 * 60 + 5:
+        # 收盘后新浪历史日线可能还没有今天：用 ETF 实时行情里今天的开高低收补上
+        try:
+            import akshare as ak
+            r = ak.fund_etf_category_sina(symbol="ETF基金").set_index("代码").loc[code]
+            df.loc[asof] = [float(r["今开"]), float(r["最高"]), float(r["最低"]), float(r["最新价"]), float(r["成交量"]), float(r["成交额"])]
+        except Exception as e:  # noqa: BLE001
+            log("ETF 当天行情补充失败", code, repr(e)[:80])
+    return df[df.index <= asof]      # 盘中运行时新浪可能给出今天未完成的 K 线
 
 
 def update_etf_daily():
@@ -164,8 +191,8 @@ def main():
             "打开通达信 → 盘后数据下载 补齐后重新运行即可")
     sig = {}
     idx_rows = []
-    for name, code, group in INDEXES:
-        df = read_day(V / code[:2] / "lday" / f"{code}.day")
+    for name, code, group in INDEXES + EXTRA:
+        df = load_extra(code, asof) if group == "红利" else read_day(V / code[:2] / "lday" / f"{code}.day")
         r = dingdi.compute(df)
         r["底部三级"] = level3(r["底部二级"], t["中线温度"], etf["net_yi"])
         sig[name] = (df, r)
@@ -177,7 +204,7 @@ def main():
             "name": name, "group": group, "date": iso(last), "close": df.close.iloc[-1], "pct": (df.close.iloc[-1] / df.close.iloc[-2] - 1) * 100,
             "senti": r["情绪"].iloc[-1], "signal": today, "last_top": lastd("顶部"), "last_s1": lastd("顶部一级"), "last_b2": lastd("底部二级"),
             "last_b1": lastd("底部一级"), "last_b3": lastd("底部三级"), "last_m": lastd("破月BBI"), "dist_high": (df.close.iloc[-1] / df.high.rolling(250).max().iloc[-1] - 1) * 100,
-            "adv": df["adv"].iloc[-1], "dec": df["dec"].iloc[-1],
+            "adv": df["adv"].iloc[-1] if "adv" in df else None, "dec": df["dec"].iloc[-1] if "dec" in df else None,
             "wzone": wz["wzone"] or None, "wzone_since": iso(wz["wzone_since"]), "wzone_until": iso(wz["wzone_until"]),
             "wsig": wz["wsig"], "wsig_date": iso(wz["wsig_date"]),
             **({k: (iso(v) if k.endswith("date") else v) for k, v in national_team.defense(df, nt_ep).items()} if nt_ep is not None else {}),

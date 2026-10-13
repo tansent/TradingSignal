@@ -236,10 +236,10 @@
 
     if (D.status === 'ok') fillTable('#daily-table', D.data, (r) => [r.date, nv(r.sh, f2), nv(r.sh_pct, sgn2), nv(r.mid_temp, f1), nv(r.short_temp, f1), nv(r.heat, f1),
       nv(r.amount_yi, f0), nv(r.up, f0), nv(r.down, f0), nv(r.zt, f0), nv(r.dt, f0), nv(r.margin_yi, f0), nv(r.margin_chg_yi, sgn1), nv(r.etf_net_yi, sgn1), r.signals]);
-    if (I.status === 'ok') fillTable('#idx-table', I.data, (r) => [r.name, r.group === '市值' ? '按市值' : '按板块', f2(r.close), sgn2(r.pct), f1(r.senti), r.signal, r.wzone ? `${r.wzone.slice(0, 2)} ${mdShort(parse(r.wzone_since))}–${mdShort(parse(r.wzone_until))}` : '—',
+    if (I.status === 'ok') fillTable('#idx-table', I.data, (r) => [r.name, r.group === '市值' ? '按市值' : r.group === '板块' ? '按板块' : r.group, f2(r.close), sgn2(r.pct), f1(r.senti), r.signal, r.wzone ? `${r.wzone.slice(0, 2)} ${mdShort(parse(r.wzone_since))}–${mdShort(parse(r.wzone_until))}` : '—',
       nv(r.adv, f0), nv(r.dec, f0), f1(r.dist_high), r.last_top ?? '—', r.last_s1 ?? '—', r.last_b3 ?? '—', r.last_b2 ?? '—', r.last_b1 ?? '—', r.last_m ?? '—']);
     if (G.status === 'ok') fillTable('#sig-table', G.data, (r) => [r.date, r.name, r.type]);
-    if (I.status === 'ok') fillTable('#nt-table', I.data.filter((r) => r.nt_low != null), (r) => [r.name, f0(r.nt_cost), `${f0(r.nt_low)}（${mdShort(parse(r.nt_low_date))}）`, f2(r.close),
+    if (I.status === 'ok') fillTable('#nt-table', I.data.filter((r) => r.nt_low != null && r.group !== '红利'), (r) => [r.name, f0(r.nt_cost), `${f0(r.nt_low)}（${mdShort(parse(r.nt_low_date))}）`, f2(r.close),
       sgn1(r.nt_vs_low * 100), `${r.nt_cost_broken ? '跌破过成本' : '未跌破成本'}，${r.nt_low_broken ? '跌破过最低点' : '未跌破最低点'}`]);
     const ntNote = document.getElementById('nt-note');
     if (S.status === 'ok' && S.data.length) {
@@ -248,10 +248,10 @@
       ntNote.classList.remove('dash-skeleton');
     }
 
-    const ids = ['chart-sh', 'chart-temp', 'chart-senti-a', 'chart-senti-b', 'chart-heat', 'chart-etf', 'chart-breadth', 'chart-limit'];
+    const ids = ['chart-sh', 'chart-temp', 'chart-senti-a', 'chart-senti-b', 'chart-senti-c', 'chart-heat', 'chart-etf', 'chart-breadth', 'chart-limit'];
     const box = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
     if (Hh.status === 'ok') {
-      ['chart-sh', 'chart-temp', 'chart-senti-a', 'chart-senti-b', 'chart-heat'].forEach((id) => box[id].classList.remove('dash-skeleton'));
+      ['chart-sh', 'chart-temp', 'chart-senti-a', 'chart-senti-b', 'chart-senti-c', 'chart-heat'].forEach((id) => box[id].classList.remove('dash-skeleton'));
       const rows = Hh.data;
       const price = new Map(rows.map((r) => [r.date, r[pxKey]]));
       const markers = rows.filter((r) => r.sig_sh && SIG[r.sig_sh]).map((r) => ({ date: r.date, y: r.sh, sym: SIG[r.sig_sh].sym, color: SIG[r.sig_sh].color, below: !SIG[r.sig_sh].above }));
@@ -262,6 +262,7 @@
       const recent = rows.slice(-120);
       miniGroup(box['chart-senti-a'], recent, [['s_sz50', '上证50'], ['s_hs300', '沪深300'], ['s_zz500', '中证500'], ['s_zz1000', '中证1000']], 0);
       miniGroup(box['chart-senti-b'], recent, [['s_sh', '上证指数'], ['s_sz', '深证成指'], ['s_cyb', '创业板指'], ['s_kc50', '科创50']], 4);
+      miniGroup(box['chart-senti-c'], recent, [['s_dlv', '红利低波ETF']], 8);
       pairChart(box['chart-heat'], rows, price, { kind: 'line', y: [0, 100], yTicks: [0, 50, 90], bands: [{ y0: 90, y1: 100, fill: C()[1] }], series: [{ key: 'heat', label: '过热分数', color: C()[1], fmt: f1 }],
         tip: (r) => [tipRow(null, '过热分数', nv(r.heat, f1))] });
       if (E.status === 'ok') {

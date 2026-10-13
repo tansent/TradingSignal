@@ -20,7 +20,7 @@ from weekly_zone import zones  # noqa: E402
 
 os.environ["NO_PROXY"] = "*"
 SECTORS = [("上证红利", "sh000015", "H00015", None), ("中证银行", "sz399986", None, 0.045), ("中证煤炭", "sz399998", None, 0.05),
-           ("红利低波", "csi:H30269", "H20269", None)]      # 红利低波不在通达信里，日线取自中证指数官网
+           ("红利低波", "csi:H30269", "H20269", None), ("红利低波100", "csi:930955", "H20955", None)]      # 红利低波不在通达信里，日线取自中证指数官网
 
 
 def csi_daily(symbol: str) -> pd.DataFrame:
