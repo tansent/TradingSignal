@@ -85,6 +85,22 @@ def fill(force: bool = False) -> str:
     idx_missing = [d for d in middle if d not in idx_have]
     stock_gap = [d for d in middle if d not in stock_have]
 
+    now = pd.Timestamp.now()
+    if now.normalize() in set(cal) and 9 * 60 + 15 <= now.hour * 60 + now.minute < 15 * 60 + 5:
+        # 交易时段内新浪快照是当天的实时行情，不能当作 target 的收盘数据：
+        # 指数只用新浪指数日线补（没有涨跌家数），个股不补，等收盘后再运行或通达信盘后数据下载
+        days = [d for d in middle + [target] if d not in idx_have]
+        hist = index_history(days) if days else []
+        if hist:
+            new = (pd.concat([old, pd.DataFrame(hist)], ignore_index=True) if len(old) else pd.DataFrame(hist))
+            new.drop_duplicates(["code", "date"], keep="last").to_parquet(OVERLAY, index=False)
+        gap = [d for d in middle + [target] if d not in stock_have]
+        msg = f"盘中运行，新浪快照是今天的实时行情，不用来补 {target.date()}。通达信最新为 {have.date()}，指数已用新浪指数日线补到 {target.date()}"
+        if gap:
+            msg += (f"。警告：个股缺 {gap[0].date()} 起 {len(gap)} 个交易日，全市场宽度和温度停在 {cal[cal < gap[0]].max().date()}；"
+                    "收盘后再运行，或打开通达信 → 盘后数据下载 补齐")
+        return msg
+
     s = ak.stock_zh_a_spot()
     s = s[(s["成交量"] > 0) & (s["今开"] > 0)].copy()
     rows = pd.DataFrame({

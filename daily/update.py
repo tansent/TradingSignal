@@ -27,6 +27,7 @@ from overheat_eval import heat  # noqa: E402
 from level3_buy import level3  # noqa: E402
 from tdx_reader import read_day  # noqa: E402
 import weekly_zone  # noqa: E402
+import national_team  # noqa: E402
 
 DATA = ROOT / "data"
 OUT = ROOT / "report_data"
@@ -150,6 +151,8 @@ def main():
     ep = panel()
     etf = pd.DataFrame({"ratio_med": ep.median(axis=1), "share_2x": (ep >= 2).sum(axis=1) / ep.notna().sum(axis=1) * 100})
     etf = etf.join(etf_net_creation(), how="left")
+    nt_eps = national_team.episodes(etf["net_yi"], read_day(V / "sh" / "lday" / "sh000300.day"))
+    nt_ep = nt_eps[-1] if nt_eps else None      # 最近一轮国家队入场
     log("5/6 指数信号")
     b = pd.read_parquet(DATA / "breadth_daily.parquet")
     a = b[b.board == "all"].set_index("date").sort_index()
@@ -176,6 +179,7 @@ def main():
             "adv": df["adv"].iloc[-1], "dec": df["dec"].iloc[-1],
             "wzone": wz["wzone"] or None, "wzone_since": iso(wz["wzone_since"]), "wzone_until": iso(wz["wzone_until"]),
             "wsig": wz["wsig"], "wsig_date": iso(wz["wsig_date"]),
+            **({k: (iso(v) if k.endswith("date") else v) for k, v in national_team.defense(df, nt_ep).items()} if nt_ep is not None else {}),
         })
     log("6/6 写出数据文件")
     write("indexes", idx_rows)
@@ -192,6 +196,8 @@ def main():
         "breadth_date": iso(bd), "gap_days": gap_days,
         "etf_ratio": etf_l["ratio_med"].iloc[-1], "etf_share_2x": etf_l["share_2x"].iloc[-1],
         "etf_net_yi": etf["net_yi"].reindex([asof]).iloc[0], "etf_net5_yi": net5,
+        "nt_first": iso(nt_ep.index[0]) if nt_ep is not None else None, "nt_last": iso(nt_ep.index[-1]) if nt_ep is not None else None,
+        "nt_days": len(nt_ep) if nt_ep is not None else 0, "nt_total_yi": float(nt_ep.net.sum()) if nt_ep is not None else None,
         "built_at": time.strftime("%Y-%m-%dT%H:%M:%S+08:00"),
     }])
 

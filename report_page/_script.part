@@ -198,6 +198,9 @@
     if (mb.length) parts.push(`${mb.join('、')}收盘连续两天跌破月线 BBI。`);
     const wTop = idx.filter((r) => r.wzone === '顶部区域').map((r) => r.name), wBot = idx.filter((r) => r.wzone === '底部区域').map((r) => r.name);
     if (wTop.length || wBot.length) parts.push(`周线：${[wTop.length ? wTop.join('、') + '处于顶部区域' : '', wBot.length ? wBot.join('、') + '处于底部区域' : ''].filter(Boolean).join('，')}。`);
+    const ntNear = idx.filter((r) => ['上证指数', '上证50', '沪深300'].includes(r.name) && r.nt_low != null && Math.abs(r.nt_vs_low) <= 0.02)
+      .map((r) => `${r.name}（${f0(r.nt_low)}，现价${r.nt_vs_low >= 0 ? '高' : '低'} ${f1(Math.abs(r.nt_vs_low) * 100)}%）`);
+    if (ntNear.length) parts.push(`接近国家队入场期最低点：${ntNear.join('、')}。`);
     const bInTop = idx.filter((r) => r.wzone === '顶部区域' && /△B|★B/.test(r.signal || '')).map((r) => r.name);
     if (bInTop.length) parts.push(`${bInTop.join('、')}的日线底部信号出现在周线顶部区域里：2015 年以来这种位置的 △B 之后 60 天上涨的比例约 37%，60 天内再跌的中位数约 15%。`);
     if (!b3.length && !b2.length && !b1.length && !st.length && !s1.length && !mb.length) parts.push('今天各指数没有顶底信号。');
@@ -236,6 +239,14 @@
     if (I.status === 'ok') fillTable('#idx-table', I.data, (r) => [r.name, r.group === '市值' ? '按市值' : '按板块', f2(r.close), sgn2(r.pct), f1(r.senti), r.signal, r.wzone ? `${r.wzone.slice(0, 2)} ${mdShort(parse(r.wzone_since))}–${mdShort(parse(r.wzone_until))}` : '—',
       nv(r.adv, f0), nv(r.dec, f0), f1(r.dist_high), r.last_top ?? '—', r.last_s1 ?? '—', r.last_b3 ?? '—', r.last_b2 ?? '—', r.last_b1 ?? '—', r.last_m ?? '—']);
     if (G.status === 'ok') fillTable('#sig-table', G.data, (r) => [r.date, r.name, r.type]);
+    if (I.status === 'ok') fillTable('#nt-table', I.data.filter((r) => r.nt_low != null), (r) => [r.name, f0(r.nt_cost), `${f0(r.nt_low)}（${mdShort(parse(r.nt_low_date))}）`, f2(r.close),
+      sgn1(r.nt_vs_low * 100), `${r.nt_cost_broken ? '跌破过成本' : '未跌破成本'}，${r.nt_low_broken ? '跌破过最低点' : '未跌破最低点'}`]);
+    const ntNote = document.getElementById('nt-note');
+    if (S.status === 'ok' && S.data.length) {
+      const s0 = S.data[0];
+      ntNote.textContent = s0.nt_first === undefined ? '国家队防线将在下一次日报更新后显示。' : s0.nt_first ? `最近一轮国家队式入场：${ymd(parse(s0.nt_first))} 至 ${ymd(parse(s0.nt_last))}，共 ${s0.nt_days} 天，上交所宽基 ETF 合计净申购 ${f0(s0.nt_total_yi)} 亿元。成本价按申购额加权。历史上上证指数、上证50 的入场期最低点多数守住，创业板几乎每次都跌破；只有 4 轮样本，仅作参考价位。` : '2015 年以来未识别到国家队式入场。';
+      ntNote.classList.remove('dash-skeleton');
+    }
 
     const ids = ['chart-sh', 'chart-temp', 'chart-senti-a', 'chart-senti-b', 'chart-heat', 'chart-etf', 'chart-breadth', 'chart-limit'];
     const box = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
