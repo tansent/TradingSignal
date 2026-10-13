@@ -68,9 +68,9 @@
 
 **国家队资金副图（GJD）需要先绑定 DLL。** 通达信公式读不到上交所 ETF 份额，所以由 `daily/update.py` 每天把数据写到 `data/tdx_nt.csv`，再由 `tdx_plugin/ntdata.dll` 按日期读出来：
 
-1. 公式管理器 → "DLL函数" → 在第 1 号位置绑定 `D:\TradingSignal\tdx_plugin\ntdata.dll`（64 位）。
+1. 把 `tdx_plugin/ntdata.dll` 复制到 `D:\TDXapp\T0002\dlls\`（通达信只能加载这个目录里的 DLL；`build.bat` 编译后会自动复制）。然后在公式管理器 → "DLL函数" → 第 1 号 → 打开绑定，选这个文件，确认信任。
 2. 新建公式 GJD（副图），粘贴 `formulas/通达信粘贴用/GJD_国家队资金.txt`。
-3. 副图显示宽基 ETF 每日净申购（亿元）：平时申购红柱、赎回绿柱；国家队入场区间是紫柱，大额赎回（离场）区间是青柱，区间开头有文字标注。标题栏显示当天净申购和近 20 日累计。
+3. 在 K 线图上按 Alt+4 把指标窗口调成 4 个，点最下面的窗口，键入 GJD 回车。副图显示宽基 ETF 每日净申购（亿元）：平时申购红柱、赎回绿柱；国家队入场区间是紫柱，大额赎回（离场）区间是青柱，区间开头有文字标注。标题栏显示当天净申购和近 20 日累计。
 4. 数据比行情晚一天（ETF 份额次日公布），最新一天显示 0。
 5. 换电脑时，可以用 `tdx_plugin/build.bat` 重新编译（需要 Visual Studio 2022 的 C++ 工具，并修改其中的路径）；DLL 里写死了数据文件路径 `D:\TradingSignal\data\tdx_nt.csv`。
 
