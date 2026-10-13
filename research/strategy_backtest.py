@@ -35,7 +35,11 @@ def load_market() -> pd.DataFrame:
 
 
 def signals(code: str, mkt: pd.DataFrame, etf_yi: float) -> pd.DataFrame:
-    df = read_day(f"D:/TDXapp/vipdoc/{code[:2]}/lday/{code}.day")
+    return signals_df(read_day(f"D:/TDXapp/vipdoc/{code[:2]}/lday/{code}.day"), mkt, etf_yi)
+
+
+def signals_df(df: pd.DataFrame, mkt: pd.DataFrame, etf_yi: float) -> pd.DataFrame:
+    """同 signals()，但直接接收日线数据（open/high/low/close，可选 adv/dec），用于通达信里没有的指数。"""
     r = dingdi.compute(df)
     s = pd.DataFrame({"close": df.close, "b1": r["底部一级"], "b2": r["底部二级"],
                       "s": r["顶部"] | r["顶部一级"]})
