@@ -87,6 +87,34 @@ def load_extra(code: str, asof) -> pd.DataFrame:
     return df[df.index <= asof]      # 盘中运行时新浪可能给出今天未完成的 K 线
 
 
+def us_section(asof) -> dict:
+    """美股：标普500、纳指的情绪、波动率、温度和顶底信号（research/us_market.py），写出 us.json。
+    返回给 history 用的序列；任何一步失败都不影响 A 股部分。"""
+    import us_market as um
+    for sid in ("VIXCLS", "VXNCLS", "NFCI", "DGS10"):
+        um.fred(sid, refresh=True)
+    for sym in (".INX", ".IXIC"):
+        um.sina_index(sym, refresh=True)
+    rows, hist = [], {}
+    for name, key, vol_name, etf_code, etf_name in (("标普500", "spx", "VIX", "sh513500", "标普500ETF"),
+                                                    ("纳指", "ndx", "VXN", "sh513100", "纳指ETF")):
+        s = um.signals(name)
+        last = s.index[-1]
+        labs = [("★B", "★B"), ("△B", "△B"), ("★S", "★S"), ("▽S", "▽S"), ("破月BBI", "破")]
+        today = [short for col, short in labs if s.loc[last, col]]
+        lastd = lambda cols: iso(s.index[s[cols].any(axis=1)].max()) if s[cols].any(axis=None) else None  # noqa: E731
+        etf = load_extra(etf_code, asof)
+        rows.append({"name": name, "date": iso(last), "close": s.close.iloc[-1], "pct": (s.close.iloc[-1] / s.close.iloc[-2] - 1) * 100,
+                     "senti": s["情绪"].iloc[-1], "vol_name": vol_name, "vol": s["波动率"].iloc[-1], "temp": s["温度"].iloc[-1],
+                     "signal": "、".join(today) or "无", "last_b": lastd(["△B", "★B"]), "last_b2": lastd(["★B"]), "last_s": lastd(["★S", "▽S"]),
+                     "dist_high": (s.close.iloc[-1] / s.close.rolling(250).max().iloc[-1] - 1) * 100,
+                     "etf_name": etf_name, "etf_code": etf_code[2:], "etf_close": etf.close.iloc[-1],
+                     "etf_pct": (etf.close.iloc[-1] / etf.close.iloc[-2] - 1) * 100, "etf_date": iso(etf.index[-1])})
+        hist[f"s_{key}"] = s["情绪"]
+    write("us", rows)
+    return hist
+
+
 def update_etf_daily():
     import akshare as ak
     (DATA / "etf").mkdir(exist_ok=True)
@@ -244,6 +272,11 @@ def main():
     hist["wz_sh"] = zsh["z_top"].astype(int) - zsh["z_bot"].astype(int)   # 1 周线顶部区域，-1 底部区域，0 中间
     hist["sig_sh"] = pd.Series(code(sig["上证指数"][1]), index=sig["上证指数"][1].index)
     hist["sig_hs300"] = pd.Series(code(sig["沪深300"][1]), index=sig["沪深300"][1].index)
+    try:
+        for k, v in us_section(asof).items():
+            hist[k] = v.reindex(hist.index, method="ffill")      # 美股按日期对齐到 A 股交易日（取当天或之前最近一个美股交易日）
+    except Exception as e:  # noqa: BLE001
+        log("美股数据更新失败，本次日报不含美股：", repr(e)[:120])
     write("history", [{"date": iso(d), **row} for d, row in hist.iterrows()])
 
     mg = mt["融资余额(亿)"]

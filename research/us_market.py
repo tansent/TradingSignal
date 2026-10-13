@@ -27,13 +27,26 @@ def fred(sid: str, refresh: bool = False) -> pd.Series:
     f = US / f"{sid}.csv"
     if refresh or not f.exists():
         import requests
-        r = requests.get("https://fred.stlouisfed.org/graph/fredgraph.csv", params={"id": sid}, timeout=60,
-                         proxies={"http": None, "https": None})
-        df = pd.read_csv(io.StringIO(r.text))
-        df.columns = ["date", sid]
-        df[sid] = pd.to_numeric(df[sid], errors="coerce")
-        US.mkdir(parents=True, exist_ok=True)
-        df.dropna().to_csv(f, index=False)
+        err = None
+        for proxy in (None, "http://127.0.0.1:7897"):        # 先直连，失败再走本机代理
+            try:
+                r = requests.get("https://fred.stlouisfed.org/graph/fredgraph.csv", params={"id": sid}, timeout=60,
+                                 proxies={"http": proxy, "https": proxy})
+                if not r.text.startswith(("DATE", "observation_date")):
+                    raise ValueError(r.text[:60])
+                df = pd.read_csv(io.StringIO(r.text))
+                df.columns = ["date", sid]
+                df[sid] = pd.to_numeric(df[sid], errors="coerce")
+                US.mkdir(parents=True, exist_ok=True)
+                df.dropna().to_csv(f, index=False)
+                err = None
+                break
+            except Exception as e:  # noqa: BLE001
+                err = e
+        if err is not None:
+            if not f.exists():
+                raise err
+            print(f"FRED {sid} 下载失败，沿用上次的数据：{repr(err)[:80]}")
     s = pd.read_csv(f, parse_dates=["date"]).set_index("date")[sid]
     return s
 
@@ -44,7 +57,12 @@ def sina_index(sym: str, refresh: bool = False) -> pd.DataFrame:
         os.environ["NO_PROXY"] = "*"
         import akshare as ak
         US.mkdir(parents=True, exist_ok=True)
-        ak.index_us_stock_sina(symbol=sym).to_csv(f, index=False)
+        try:
+            ak.index_us_stock_sina(symbol=sym).to_csv(f, index=False)
+        except Exception as e:  # noqa: BLE001
+            if not f.exists():
+                raise
+            print(f"新浪 {sym} 下载失败，沿用上次的数据：{repr(e)[:80]}")
     d = pd.read_csv(f, parse_dates=["date"]).set_index("date").sort_index()
     return d[["open", "high", "low", "close", "volume"]].astype(float)
 
