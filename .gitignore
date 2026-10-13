@@ -29,3 +29,8 @@ data/*
 !data/margin_account_info.csv
 !data/margin_sh_full.csv
 !data/margin_sz_full.csv
+
+# DLL build intermediates
+tdx_plugin/*.obj
+tdx_plugin/*.exp
+tdx_plugin/*.lib

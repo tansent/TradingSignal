@@ -153,6 +153,7 @@ def main():
     etf = etf.join(etf_net_creation(), how="left")
     nt_eps = national_team.episodes(etf["net_yi"], read_day(V / "sh" / "lday" / "sh000300.day"))
     nt_ep = nt_eps[-1] if nt_eps else None      # 最近一轮国家队入场
+    national_team.export_tdx(etf["net_yi"], read_day(V / "sh" / "lday" / "sh000300.day"), DATA / "tdx_nt.csv")  # 给通达信 DLL
     log("5/6 指数信号")
     b = pd.read_parquet(DATA / "breadth_daily.parquet")
     a = b[b.board == "all"].set_index("date").sort_index()

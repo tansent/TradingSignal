@@ -43,3 +43,39 @@ def defense(df: pd.DataFrame, ep: pd.DataFrame) -> dict:
     return {"nt_cost": cost, "nt_low": low, "nt_low_date": df.low.reindex(ep.index).idxmin(),
             "nt_cost_broken": bool((after < cost).any()), "nt_low_broken": bool((after < low).any()),
             "nt_vs_low": last / low - 1, "nt_vs_cost": last / cost - 1}
+
+
+EXIT_YI = -150.0
+
+
+def exit_episodes(etf_net_yi: pd.Series, idx: pd.DatetimeIndex) -> list[pd.DatetimeIndex]:
+    """大额赎回（单日净赎回 ≥150 亿）的区间，相隔不超过 GAP 个交易日算同一段。"""
+    days = etf_net_yi[etf_net_yi <= EXIT_YI].index
+    out, cur = [], []
+    for t in days:
+        if cur and idx.get_loc(t) - idx.get_loc(cur[-1]) > GAP:
+            out.append(pd.DatetimeIndex(cur))
+            cur = []
+        cur.append(t)
+    if cur:
+        out.append(pd.DatetimeIndex(cur))
+    return out
+
+
+def export_tdx(etf_net_yi: pd.Series, hs300: pd.DataFrame, path) -> int:
+    """给通达信 DLL（tdx_plugin/ntdata.dll）读的文件：日期,净申购亿,区间(1 入场 / -1 离场 / 0),当天(1 入场日 / -1 大额赎回日 / 0)。"""
+    idx = hs300.index
+    net = etf_net_yi.dropna()
+    net = net[net.index.isin(idx)]
+    zone = pd.Series(0, index=net.index)
+    flag = pd.Series(0, index=net.index)
+    for ep in episodes(net, hs300):
+        zone[(zone.index >= ep.index[0]) & (zone.index <= ep.index[-1])] = 1
+        flag[ep.index] = 1
+    for ep in exit_episodes(net, idx):
+        zone[(zone.index >= ep[0]) & (zone.index <= ep[-1])] = -1
+        flag[ep] = -1
+    lines = [f"{t:%Y%m%d},{v:.2f},{zone[t]},{flag[t]}" for t, v in net.items()]
+    with open(path, "w", encoding="ascii", newline="\n") as f:
+        f.write("\n".join(lines) + "\n")
+    return len(lines)
