@@ -38,7 +38,7 @@
       <table class="rp-table rp-daily" id="daily-table" data-source="daily" data-row-key="date">
         <thead><tr>
           <th data-field="date">日期</th><th data-field="sh">上证</th><th data-field="sh_pct">涨跌 %</th>
-          <th data-field="mid_temp">中线温度</th><th data-field="short_temp">短线温度</th><th data-field="heat">过热分数</th>
+          <th data-field="mid_temp">中线温度</th><th data-field="short_temp">短线温度</th><th data-field="heat">过热分数</th><th data-field="crowd">拥挤度 %</th>
           <th data-field="amount_yi">成交额（亿）</th><th data-field="up">上涨家数</th><th data-field="down">下跌家数</th>
           <th data-field="zt">涨停</th><th data-field="dt">跌停</th>
           <th data-field="margin_yi">融资余额（亿）</th><th data-field="margin_chg_yi">融资增减（亿）</th>
@@ -132,6 +132,11 @@
         <h2>融资 + 成交额过热分数（近一年）</h2>
         <p class="rp-note">成交额相对年均、融资买入占成交额、融资余额 60 日增速的近 3 年分位平均。≥90 极热：之后往往还有上涨，但每一轮最终都以下跌收场。</p>
         <div class="rp-chart tall dash-skeleton" id="chart-heat" data-source="history"></div>
+      </div>
+      <div id="card-crowd" style="min-width:0">
+        <h2>A股拥挤度（近一年，%）</h2>
+        <p class="rp-note">成交额排名前 5% 的个股，成交额占全部 A 股的比例，衡量资金是否抱团在少数股票上（取自公众号"杨哥"的顶部指标，用通达信个股数据复算，和他公布的数值一致）。2011 年以来，≥48% 且沪深300 在一年高点 5% 以内共 4 次，3 次是阶段顶部（2017-11、2021-01、2026-05），2014-12 是例外。暴跌时小盘股跌停卖不出、成交集中到大盘股，也会冲高，这种情况不算顶部信号。跌回 42% 或 35% 以下不代表见底，历史上之后还有下跌。和过热分数关系不大（相关系数 0.2）：过热分数看全市场热不热，拥挤度看热度是不是集中在少数股票。</p>
+        <div class="rp-chart tall dash-skeleton" id="chart-crowd" data-source="history"></div>
       </div>
       <div id="card-etf" style="min-width:0">
         <h2>宽基 ETF 净申购（近 120 个交易日，亿元）</h2>

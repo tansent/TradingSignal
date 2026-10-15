@@ -1,0 +1,11 @@
+{YJD 拥挤度（副图）：成交额排名前 5% 的个股，成交额占全部 A 股的比例（%），数据来自 ntdata.dll 第 4-6 号函数。
+ 红柱：高危区（≥48% 且沪深300 在一年高点 5% 以内）；粉柱：警戒区（≥45% 且近高点）；◆S：每一轮高危区的第一天。
+ 暴跌时拥挤度也会冲高（小盘股跌停、成交集中到大盘股），这时指数不在高点，不会出红柱。}
+值:=TDXDLL1(4,DATE,0,0);
+拥挤度:IF(值>0,值,DRAWNULL),COLOR0080FF,LINETHICK2;
+高危线:48,COLORRED,DOTLINE;
+警戒线:45,COLORGRAY,DOTLINE;
+区:=TDXDLL1(5,DATE,0,0);
+STICKLINE(区=2,45,值,2,0),COLORRED;
+STICKLINE(区=1,45,值,2,0),COLORMAGENTA;
+DRAWTEXT(TDXDLL1(6,DATE,0,0)>0,值+1.5,'◆S'),COLOR0080FF;

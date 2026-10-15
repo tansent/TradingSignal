@@ -210,6 +210,10 @@
       if (/B/.test(r.signal)) parts.push(`美股：${r.name}出现 ${r.signal}（美股底部信号历史上较有效）。`);
       else if (/S/.test(r.signal)) parts.push(`美股：${r.name}出现 ${r.signal}（美股顶部信号历史上不可靠，多数时候之后仍在涨）。`);
     });
+    if (s.crowd != null && s.crowd >= 48) parts.push(s.crowd_warn
+      ? `${s.crowd_mark ? '出现 ◆S 抱团顶：' : ''}A股拥挤度 ${f1(s.crowd)}%，且沪深300 在一年高点 5% 以内：资金高度抱团，2011 年以来这种情况 4 次里 3 次是阶段顶部。`
+      : `A股拥挤度 ${f1(s.crowd)}%，但沪深300 离一年高点较远（${f1(s.hs300_dist_high)}%），更像下跌中成交集中到大盘股，不按顶部信号看。`);
+    if (s.red_s) parts.push(`${s.red_s}出现红色 ◆S：橙色 ◆S 之后又冲高（二次冲顶：再涨 5% 以上且拥挤度 ≥50%、情绪亢奋、放量；M顶：30 天内回到前高附近，拥挤度不降、量能和融资不减）。2015 年以来二次冲顶之后 20 天中位 −9%，M顶之后 60 天下跌的比例约 78%、中位 −10%；但 2014-12 那一轮之后是大牛市，◆S 都失效了。`);
     if (s.etf_net_yi != null) parts.push(`宽基 ETF ${s.etf_net_yi >= 0 ? '净申购' : '净赎回'}。`);
     return parts.join('');
   }
@@ -238,7 +242,7 @@
     const take = document.getElementById('takeaway');
     if (S.status === 'ok' && I.status === 'ok' && S.data.length) { take.textContent = takeaway(S.data[0], I.data, dash.data('us').status === 'ok' ? dash.data('us').data : []); take.classList.remove('dash-skeleton'); }
 
-    if (D.status === 'ok') fillTable('#daily-table', D.data, (r) => [r.date, nv(r.sh, f2), nv(r.sh_pct, sgn2), nv(r.mid_temp, f1), nv(r.short_temp, f1), nv(r.heat, f1),
+    if (D.status === 'ok') fillTable('#daily-table', D.data, (r) => [r.date, nv(r.sh, f2), nv(r.sh_pct, sgn2), nv(r.mid_temp, f1), nv(r.short_temp, f1), nv(r.heat, f1), nv(r.crowd, f1),
       nv(r.amount_yi, f0), nv(r.up, f0), nv(r.down, f0), nv(r.zt, f0), nv(r.dt, f0), nv(r.margin_yi, f0), nv(r.margin_chg_yi, sgn1), nv(r.etf_net_yi, sgn1), r.signals]);
     if (I.status === 'ok') fillTable('#idx-table', I.data, (r) => [r.name, r.group === '市值' ? '按市值' : r.group === '板块' ? '按板块' : r.group, f2(r.close), sgn2(r.pct), f1(r.senti), r.signal, r.wzone ? `${r.wzone.slice(0, 2)} ${mdShort(parse(r.wzone_since))}–${mdShort(parse(r.wzone_until))}` : '—',
       nv(r.adv, f0), nv(r.dec, f0), f1(r.dist_high), r.last_top ?? '—', r.last_s1 ?? '—', r.last_b3 ?? '—', r.last_b2 ?? '—', r.last_b1 ?? '—', r.last_m ?? '—']);
@@ -282,10 +286,10 @@
       evOverall.classList.remove('dash-skeleton');
     } else if (EV.status === 'missing') { evOverall.textContent = '事件预警将在下一次日报更新后显示。'; evOverall.classList.remove('dash-skeleton'); }
 
-    const ids = ['chart-sh', 'chart-temp', 'chart-senti-a', 'chart-senti-b', 'chart-senti-c', 'chart-senti-us', 'chart-heat', 'chart-etf', 'chart-breadth', 'chart-limit'];
+    const ids = ['chart-sh', 'chart-temp', 'chart-senti-a', 'chart-senti-b', 'chart-senti-c', 'chart-senti-us', 'chart-heat', 'chart-crowd', 'chart-etf', 'chart-breadth', 'chart-limit'];
     const box = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
     if (Hh.status === 'ok') {
-      ['chart-sh', 'chart-temp', 'chart-senti-a', 'chart-senti-b', 'chart-senti-c', 'chart-senti-us', 'chart-heat'].forEach((id) => box[id].classList.remove('dash-skeleton'));
+      ['chart-sh', 'chart-temp', 'chart-senti-a', 'chart-senti-b', 'chart-senti-c', 'chart-senti-us', 'chart-heat', 'chart-crowd'].forEach((id) => box[id].classList.remove('dash-skeleton'));
       const rows = Hh.data;
       const price = new Map(rows.map((r) => [r.date, r[pxKey]]));
       const markers = rows.filter((r) => r.sig_sh && SIG[r.sig_sh]).map((r) => ({ date: r.date, y: r.sh, sym: SIG[r.sig_sh].sym, color: SIG[r.sig_sh].color, below: !SIG[r.sig_sh].above }));
@@ -300,6 +304,8 @@
       miniGroup(box['chart-senti-us'], recent, [['s_spx', '标普500 情绪'], ['s_ndx', '纳指 情绪']], 9);
       pairChart(box['chart-heat'], rows, price, { kind: 'line', y: [0, 100], yTicks: [0, 50, 90], bands: [{ y0: 90, y1: 100, fill: C()[1] }], series: [{ key: 'heat', label: '过热分数', color: C()[1], fmt: f1 }],
         tip: (r) => [tipRow(null, '过热分数', nv(r.heat, f1))] });
+      pairChart(box['chart-crowd'], rows, price, { kind: 'line', y: [30, 60], yTicks: [35, 42, 48, 55], bands: [{ y0: 48, y1: 60, fill: C()[1] }],
+        series: [{ key: 'crowd', label: '拥挤度', color: C()[3], fmt: f1 }], tip: (r) => [tipRow(null, '拥挤度', nv(r.crowd, f1) + '%')] });
       if (E.status === 'ok') {
         box['chart-etf'].classList.remove('dash-skeleton');
         pairChart(box['chart-etf'], E.data, price, { kind: 'bar', barKey: 'net_yi', pos: 'var(--color-bad)', neg: 'var(--color-ok)',

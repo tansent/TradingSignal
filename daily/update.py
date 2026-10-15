@@ -28,6 +28,8 @@ from level3_buy import level3  # noqa: E402
 from tdx_reader import read_day  # noqa: E402
 import weekly_zone  # noqa: E402
 import national_team  # noqa: E402
+import crowding  # noqa: E402
+import red_top  # noqa: E402
 
 DATA = ROOT / "data"
 OUT = ROOT / "report_data"
@@ -186,6 +188,11 @@ def main():
     log("通达信数据最新日期", asof.date())
 
     log("1/6 全市场宽度"); build_breadth.main()
+    try:                       # A股拥挤度：成交额前 5% 个股的成交额占比（research/crowding.py）
+        crowd = crowding.build()["crowd"]
+    except Exception as e:  # noqa: BLE001
+        log("拥挤度计算失败，本次日报不含拥挤度：", repr(e)[:100])
+        crowd = pd.Series(dtype=float)
     log("2/6 融资数据")
     try:
         update_margin_sse(); margin_turnover.download()
@@ -209,6 +216,11 @@ def main():
     nt_eps = national_team.episodes(etf["net_yi"], read_day(V / "sh" / "lday" / "sh000300.day"))
     nt_ep = nt_eps[-1] if nt_eps else None      # 最近一轮国家队入场
     national_team.export_tdx(etf["net_yi"], read_day(V / "sh" / "lday" / "sh000300.day"), DATA / "tdx_nt.csv")  # 给通达信 DLL
+    if len(crowd):
+        crowding.export_tdx(crowd, read_day(V / "sh" / "lday" / "sh000300.day"), DATA / "tdx_crowd.csv")  # 给通达信 DLL（◆S、拥挤度副图）
+    mgd = mt["融资余额(亿)"].reindex(tdx.index).ffill()
+    mg20k = red_top.margin_chg20_known(mgd)          # 融资余额 20 日变化（收盘时已知，即前一天的数）
+    crowding.export_margin_tdx(mg20k, mgd, DATA / "tdx_margin.csv")   # 给通达信 DLL（红色 ◆S 的 M 顶条件）
     log("5/6 指数信号")
     b = pd.read_parquet(DATA / "breadth_daily.parquet")
     a = b[b.board == "all"].set_index("date").sort_index()
@@ -244,12 +256,31 @@ def main():
     etf_l = etf.loc[:asof].dropna(subset=["ratio_med"])
     net5 = etf["net_yi"].loc[:asof].tail(5).sum(min_count=1)
     ar = a.reindex([asof]).iloc[0]  # 个股数据缺天时为空值
+    # 拥挤度 ≥48% 且沪深300 在一年高点 5% 以内：历史上 4 次里 3 次是阶段顶部（2017-11、2021-01、2026-05；2014-12 例外）
+    hs = sig["沪深300"][0]
+    hs_dist = hs.close.iloc[-1] / hs.high.rolling(250).max().iloc[-1] - 1
+    crowd_now = crowd.get(asof, np.nan)
+    tz = crowding.top_zone(crowd, hs) if len(crowd) else pd.DataFrame(columns=["zone", "mark"])
+    cz = tz.reindex([asof]).iloc[0] if len(tz) else pd.Series({"zone": 0, "mark": 0})
+    red_s = []      # 红色 ◆S：二次冲顶（再涨≥5%+拥挤≥50%+情绪≥85+放量）或 M 顶（30 天内回到前高附近、拥挤不降、量和融资不减）
+    if len(tz):
+        div = {n for n, _, g in EXTRA if g == "红利"}     # ◆S 不适用于红利类：拥挤度高之后红利低波反而偏强
+        for name, (df, r) in sig.items():
+            if name not in div and "amount" in df and asof in df.index:
+                kinds =[k for k, fn in (("二次冲顶", lambda: red_top.red_signal(df, r, crowd, tz["mark"])),
+                                         ("M顶", lambda: red_top.red_signal_mtop(df, r, crowd, tz["mark"], mg20k)))
+                         if bool(fn().get(asof, False))]
+                if kinds:
+                    red_s.append(f"{name}（{'、'.join(kinds)}）")
     write("summary", [{
         "date": iso(asof), "mid_temp": t["中线温度"].get(asof), "short_temp": t["短线温度_分位"].get(asof),
         "heat": h.H.reindex([asof]).iloc[0] * 100, "margin_yi": m_last.iloc[-1], "margin_date": iso(m_last.index[-1]),
         "amount_yi": ar["amount"] / 1e8, "up": ar["up"], "down": ar["down"],
         "zt": ar["zt"], "dt": ar["dt"], "zb": ar["zb"], "max_lb": ar["max_lb"],
         "breadth_date": iso(bd), "gap_days": gap_days,
+        "crowd": crowd_now, "crowd_max20": crowd.loc[:asof].tail(20).max() if len(crowd) else None,
+        "hs300_dist_high": hs_dist * 100, "crowd_warn": bool(cz["zone"] == 2), "crowd_mark": bool(cz["mark"] == 1),
+        "red_s": "、".join(red_s) or None,
         "etf_ratio": etf_l["ratio_med"].iloc[-1], "etf_share_2x": etf_l["share_2x"].iloc[-1],
         "etf_net_yi": etf["net_yi"].reindex([asof]).iloc[0], "etf_net5_yi": net5,
         "nt_first": iso(nt_ep.index[0]) if nt_ep is not None else None, "nt_last": iso(nt_ep.index[-1]) if nt_ep is not None else None,
@@ -264,6 +295,7 @@ def main():
     hist["mid_temp"] = t["中线温度"]
     hist["short_temp"] = t["短线温度_分位"]
     hist["heat"] = h.H * 100
+    hist["crowd"] = crowd
     for name, key in SENTI_KEYS.items():
         hist[key] = sig[name][1]["情绪"]
     code = lambda r: np.select([r[c] for c, *_ in SIGNALS], [k for *_, k in SIGNALS], "")  # noqa: E731
@@ -286,7 +318,7 @@ def main():
         shc = sig["上证指数"][0].close
         tab.append({"date": iso(d), "sh": shc.get(d), "sh_pct": (shc.get(d) / shc.shift().get(d) - 1) * 100,
                     "mid_temp": t["中线温度"].get(d), "short_temp": t["短线温度_分位"].get(d), "heat": h.H.get(d, np.nan) * 100,
-                    "amount_yi": a["amount"].get(d, np.nan) / 1e8, "up": a["up"].get(d), "down": a["down"].get(d),
+                    "crowd": crowd.get(d), "amount_yi": a["amount"].get(d, np.nan) / 1e8, "up": a["up"].get(d), "down": a["down"].get(d),
                     "zt": a["zt"].get(d), "dt": a["dt"].get(d), "margin_yi": mg.get(d), "margin_chg_yi": mg.diff().get(d),
                     "etf_net_yi": etf["net_yi"].get(d), "signals": "、".join(sigs) if sigs else "—"})
     write("daily", tab)

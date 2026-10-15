@@ -34,3 +34,6 @@ data/*
 tdx_plugin/*.obj
 tdx_plugin/*.exp
 tdx_plugin/*.lib
+
+# 公众号"杨哥"的文章链接和正文（他人版权内容，只在本地研究用）
+杨哥/
