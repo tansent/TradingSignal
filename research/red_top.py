@@ -26,10 +26,16 @@ WIN = 120
 
 
 RISE, CROWD, SENTI, VOLX = 0.05, 50, 85, 1.3     # 默认参数（和通达信 DINGDI 里的红色 ◆S 一致）
+# 橙色 ◆S 之后前 5 个交易日不出红色 ◆S（2026-10-16，用户提议）：2015 年后三轮、全部指数，距橙 1～5 天的红色 ◆S
+# 之后 20 天下跌比例只有 49%、中位 +0.3%（和随便哪天差不多），6～30 天是 81%、-11.6%。
+# 两种红色 ◆S 合计，改后 20 天下跌 81%、中位 -10.9%（改前 70%、-6.1%），60 天 77%、-11.6%，60 天内回撤中位 -19%。
+# 试过按指数波动率缩放"涨 5%"和"离前高 3%"（上证低一些、科创高一些）：总体结果几乎不变，
+# 上证反而少了 2026-06-22 那次；上证 2021-02-18 的真顶抓不到是因为缩量（量/20 日均额 1.14）和融资在降，不是涨幅门槛。所以不分指数。
+GAP_MIN = 6
 
 
 def red_signal(d: pd.DataFrame, r: pd.DataFrame, crowd: pd.Series, mark: pd.Series) -> pd.Series:
-    """每天是否出现红色 ◆S：最近一次橙色 ◆S 在 1～120 个交易日前，收盘比那天高 ≥5%，拥挤度 ≥50%，
+    """每天是否出现红色 ◆S：最近一次橙色 ◆S 在 6～120 个交易日前，收盘比那天高 ≥5%，拥挤度 ≥50%，
     近 3 天情绪最高 ≥85，成交额 ≥ 20 日均额 1.3 倍。d 是该指数日线，r 是 dingdi.compute(d)，mark 是全市场的橙色 ◆S（0/1）。"""
     c = d.close
     mk = mark.reindex(c.index).fillna(0).astype(bool).to_numpy()
@@ -41,7 +47,7 @@ def red_signal(d: pd.DataFrame, r: pd.DataFrame, crowd: pd.Series, mark: pd.Seri
         last[i] = li
     gap = np.where(last >= 0, np.arange(len(c)) - last, 10**9)
     base = np.where(last >= 0, c.to_numpy()[np.maximum(last, 0)], np.nan)
-    cond = ((gap >= 1) & (gap <= WIN) & (c.to_numpy() >= base * (1 + RISE))
+    cond = ((gap >= GAP_MIN) & (gap <= WIN) & (c.to_numpy() >= base * (1 + RISE))
             & (crowd.reindex(c.index).to_numpy() >= CROWD)
             & (r["情绪"].rolling(3).max().to_numpy() >= SENTI)
             & ((d.amount / d.amount.rolling(20).mean()).to_numpy() >= VOLX))
@@ -57,7 +63,7 @@ def margin_chg20_known(mg: pd.Series) -> pd.Series:
 
 
 def red_signal_mtop(d: pd.DataFrame, r: pd.DataFrame, crowd: pd.Series, mark: pd.Series, mg20: pd.Series) -> pd.Series:
-    """红色 ◆S 的第二种情形（M 顶）：橙色 ◆S 之后 1～30 个交易日内，收盘在"橙色 ◆S 前 20 天至今"最高价的 3% 以内，
+    """红色 ◆S 的第二种情形（M 顶）：橙色 ◆S 之后 6～30 个交易日内，收盘在"橙色 ◆S 前 20 天至今"最高价的 3% 以内，
     拥挤度 ≥ max(48, 橙色 ◆S 当天的拥挤度)，5 日均额 ≥ 20 日均额，近 3 天情绪最高 ≥70，融资余额 20 日不降（用前一天的数）。"""
     c, h = d.close, d.high
     mk = mark.reindex(c.index).fillna(0).astype(bool).to_numpy()
@@ -72,7 +78,7 @@ def red_signal_mtop(d: pd.DataFrame, r: pd.DataFrame, crowd: pd.Series, mark: pd
     cr_at = np.where(last >= 0, crv[np.maximum(last, 0)], np.nan)
     hv = h.to_numpy()
     hh = np.array([hv[max(0, last[i] - 20):i + 1].max() if 0 <= last[i] and gap[i] <= WIN2 else np.nan for i in range(len(c))])
-    ok = ((gap >= 1) & (gap <= WIN2) & (c.to_numpy() >= NEAR2 * hh) & (crv >= np.maximum(48, cr_at))
+    ok = ((gap >= GAP_MIN) & (gap <= WIN2) & (c.to_numpy() >= NEAR2 * hh) & (crv >= np.maximum(48, cr_at))
           & ((d.amount.rolling(5).mean() / d.amount.rolling(20).mean()).to_numpy() >= 1.0)
           & (r["情绪"].rolling(3).max().to_numpy() >= SENTI2)
           & (mg20.reindex(c.index).to_numpy() >= 0))

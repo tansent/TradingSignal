@@ -277,7 +277,7 @@ def main():
                 kinds = [k for k, s in (("二次冲顶", two), ("M顶", mtop)) if bool(s.get(asof, False))]
                 if kinds:
                     red_s.append(f"{name}（{'、'.join(kinds)}）")
-    # 浅蓝 B：全市场冰点 + 该指数前 20 天无 S（含红色 ◆S）、前 5 天无 B、离 20 日高点 ≥5%、10 天内第一个（research/icepoint.py）
+    # 深蓝 B：全市场冰点 + 该指数前 20 天无 S（含红色 ◆S）、前 5 天无 B、离 20 日高点 ≥5%、10 天内第一个（research/icepoint.py）
     ice_chart = {n: icepoint.chart_ice(df, r, ice, red_ser.get(n)) for n, (df, r) in sig.items() if n not in {x for x, *_ in EXTRA}}
     ice_idx = [n for n, s in ice_chart.items() if s.get(asof, False)]
     write("summary", [{
@@ -307,7 +307,7 @@ def main():
         log("★ 重要提醒：" + "；".join(alerts))
     if ice.get(asof, False):
         log(f"全市场跌停 {int(ar['dt'])} 家 > 涨停 {int(ar['zt'])} 家；"
-            + (f"浅蓝 B 冰点：{'、'.join(ice_idx)}（只作短线参考）" if ice_idx else "各指数都不符合浅蓝 B 的条件"))
+            + (f"深蓝 B 冰点：{'、'.join(ice_idx)}（只作短线参考）" if ice_idx else "各指数都不符合深蓝 B 的条件"))
 
     days = tdx.index[-250:]
     hist = pd.DataFrame(index=days)
