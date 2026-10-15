@@ -31,7 +31,11 @@ def update(start: str = "2023-10-01"):
         try:
             df = ak.fund_etf_scale_sse(date=day)
         except Exception as e:  # noqa: BLE001
-            print(day, "ERR", repr(e)[:80])
+            # 上交所次日才公布当天份额，最近一天取不到时接口返回空表（KeyError），不是接口变了
+            if isinstance(e, KeyError) and day == max(trading_days(start)):
+                print(day, "ETF 份额尚未公布（上交所次日公布），下次运行自动补上")
+            else:
+                print(day, "ERR", repr(e)[:80])
             time.sleep(2)
             continue
         df = df[df["基金代码"].astype(str).isin(KEY)]
