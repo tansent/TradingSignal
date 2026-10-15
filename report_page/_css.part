@@ -42,6 +42,13 @@
 .rp-fail::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--color-bad); }
 .rp-daily tbody tr:first-child td { font-weight: var(--cds-font-weight-medium); background: var(--color-bg); }
 .rp-daily td:last-child, .rp-daily th:last-child { text-align: left; white-space: normal; min-width: 14rem; }
+.rp-ev-overall { margin: 0; font-size: var(--cds-font-size-body); max-width: 80ch; text-wrap: pretty; padding-left: var(--cds-pad-md); border-left: 3px solid var(--color-warn); }
+.rp-ev td, .rp-ev th { text-align: left; }
+.rp-ev .ev-main td { border-bottom: none; padding-bottom: 0; }
+.rp-ev td.ev-name { white-space: normal; min-width: 12rem; width: 100%; }
+.rp-ev .ev-judge td { white-space: normal; padding-top: 2px; padding-bottom: var(--cds-pad-sm); max-width: 0; }
+.rp-ev .ev-judge span { color: var(--color-fg-muted); }
+.rp-ev .up { color: var(--color-bad); } .rp-ev .down { color: var(--color-ok); }
 .rp-group { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin: var(--cds-gap-sm) 0 0; }
 .rp-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cds-gap-sm); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
 .rp-ctl select { font: inherit; color: var(--color-fg); background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 2px var(--cds-pad-sm); }

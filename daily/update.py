@@ -306,6 +306,11 @@ def main():
                 ev.append({"date": iso(d), "name": name, "type": typ})
     ev.sort(key=lambda x: (x["date"], x["name"]), reverse=True)
     write("signals", ev)
+    try:
+        import events                   # 事件预警：财经日历（判断由定时任务写入）
+        events.write(events.build())
+    except Exception as e:  # noqa: BLE001
+        log("事件日历更新失败，本次日报不更新事件预警：", repr(e)[:120])
     log("完成")
 
 

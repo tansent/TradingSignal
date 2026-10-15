@@ -5,6 +5,32 @@
     <p class="rp-take dash-skeleton" id="takeaway" data-source="summary indexes">—</p>
   </header>
 
+  <section class="rp-card" id="ev-card">
+    <h2>事件预警</h2>
+    <p class="rp-ev-overall dash-skeleton" id="ev-overall" data-source="events">—</p>
+    <p class="rp-note" id="ev-note">来自华尔街见闻财经日历，时间为北京时间。「基础判断」按固定规则生成（手动运行也有），「判断」由每日定时任务里的 Claude 改写；都只是提示，不构成买卖建议。日历偶有错漏，以官方发布为准。回测显示美股大跌、美债急升对 A 股的冲击通常一天内就反应完。</p>
+    <div class="rp-group">已公布（上一个交易日 15:00 之后）</div>
+    <div class="rp-scroll">
+      <table class="rp-table rp-ev" id="ev-done" data-source="events" data-row-key="id">
+        <thead><tr>
+          <th data-field="time_text">时间</th><th data-field="region">地区</th><th data-field="event">事件</th>
+          <th data-field="actual">公布 / 预期 / 前值</th><th data-field="surprise">对比</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="rp-group" id="ev-next-title">未来 3 个交易日</div>
+    <div class="rp-scroll">
+      <table class="rp-table rp-ev" id="ev-next" data-source="events" data-row-key="id">
+        <thead><tr>
+          <th data-field="time_text">时间</th><th data-field="region">地区</th><th data-field="importance">重要性</th><th data-field="event">事件</th>
+          <th data-field="forecast">预期 / 前值</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="rp-card" id="daily">
     <h2>近 20 个交易日</h2>
     <p class="rp-note">第一行是最新交易日。温度和过热分数都是 0–100；短线温度只在两端有意义（&lt;10 短期易反弹，&gt;90 回落后中期偏弱）；中线温度 &lt;20 为恐慌区。融资余额通常次日早上公布，当天可能暂缺。</p>

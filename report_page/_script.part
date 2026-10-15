@@ -255,6 +255,33 @@
       ntNote.classList.remove('dash-skeleton');
     }
 
+    const EV = dash.data('events');
+    const evOverall = document.getElementById('ev-overall');
+    // 每条事件两行：第一行时间、事件和数值，第二行整行写判断（窄屏时判断不会被挤到看不见）
+    const evTable = (sel, rows, cells, empty) => {
+      const body = document.querySelector(sel + ' tbody'), n = document.querySelectorAll(sel + ' thead th').length;
+      if (!rows.length) { const tr = document.createElement('tr'), td = document.createElement('td'); td.colSpan = n; td.textContent = empty; tr.appendChild(td); body.replaceChildren(tr); return; }
+      body.replaceChildren(...rows.flatMap((r) => {
+        const tr = document.createElement('tr'); tr.className = 'ev-main';
+        cells(r).forEach(([text, cls]) => { const td = document.createElement('td'); td.textContent = text; if (cls) td.className = cls; tr.appendChild(td); });
+        const tj = document.createElement('tr'), td = document.createElement('td'), lab = document.createElement('span');
+        tj.className = 'ev-judge'; td.colSpan = n; lab.textContent = r.judgment_src === 'rule' ? '基础判断：' : '判断：';
+        td.append(lab, r.judgment || '暂无（规则不覆盖这类事件，定时任务运行时由 Claude 补充）'); tj.appendChild(td);
+        return [tr, tj];
+      }));
+    };
+    if (EV.status === 'ok') {
+      const o = EV.data.find((r) => r.kind === '总评') || {};
+      const vals = (...xs) => (xs.every((x) => x == null) ? '—' : xs.map((x) => (x == null ? '—' : String(x))).join(' / '));
+      const done = EV.data.filter((r) => r.kind === '已公布'), next = EV.data.filter((r) => r.kind === '即将发生');
+      evTable('#ev-done', done, (r) => [[r.time_text], [r.region], [r.event, 'ev-name'], [vals(r.actual, r.forecast, r.previous)],
+        [r.surprise || '—', /高于/.test(r.surprise || '') ? 'up' : /低于/.test(r.surprise || '') ? 'down' : '']], '没有重要数据公布');
+      evTable('#ev-next', next, (r) => [[r.time_text], [r.region], ['★'.repeat(Math.min(r.importance || 0, 5))], [r.event, 'ev-name'], [vals(r.forecast, r.previous)]], '日历里暂无重要事件');
+      if (o.next_days) document.getElementById('ev-next-title').textContent = `未来 3 个交易日（${o.next_days}）`;
+      evOverall.textContent = o.judgment ? `${o.judgment_src === 'rule' ? '基础总评' : '总评'}：${o.judgment}` : '总评由每日定时任务生成。';
+      evOverall.classList.remove('dash-skeleton');
+    } else if (EV.status === 'missing') { evOverall.textContent = '事件预警将在下一次日报更新后显示。'; evOverall.classList.remove('dash-skeleton'); }
+
     const ids = ['chart-sh', 'chart-temp', 'chart-senti-a', 'chart-senti-b', 'chart-senti-c', 'chart-senti-us', 'chart-heat', 'chart-etf', 'chart-breadth', 'chart-limit'];
     const box = Object.fromEntries(ids.map((id) => [id, document.getElementById(id)]));
     if (Hh.status === 'ok') {

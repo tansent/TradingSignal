@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "reports" / "A股情绪日报.html"
-DATASETS = ["summary", "indexes", "history", "breadth", "etf", "signals", "daily", "us"]
+DATASETS = ["summary", "indexes", "history", "breadth", "etf", "signals", "daily", "us", "events"]
 
 TOKENS = """
 :root {
