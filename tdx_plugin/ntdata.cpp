@@ -1,7 +1,8 @@
-// 通达信公式 DLL：按日期读取 daily/update.py 每天生成的两个文件。
+// 通达信公式 DLL：按日期读取 daily/update.py 每天生成的数据文件。
 //   D:\TradingSignal\data\tdx_nt.csv     每行：YYYYMMDD,净申购亿元,区间(1 入场 / -1 离场 / 0),当天(1 入场日 / -1 大额赎回日 / 0)
 //   D:\TradingSignal\data\tdx_crowd.csv  每行：YYYYMMDD,拥挤度%,区域(2 高危 / 1 警戒 / 0),◆S(1 / 0)
 //   D:\TradingSignal\data\tdx_margin.csv 每行：YYYYMMDD,融资余额20日变化%,融资余额亿,0（收盘时已知，即前一天的数）
+//   D:\TradingSignal\data\tdx_extra.csv  通用表，每行：YYYYMMDD,第1列,...,第8列（列的含义见 research/icepoint.py）
 //
 // 公式里的用法（绑定到第 1 号 DLL 时）：
 //   TDXDLL1(1, DATE, 0, 0)  当天上交所宽基 ETF 净申购（亿元），没有数据时为 0
@@ -13,12 +14,16 @@
 //   TDXDLL1(7, DATE, 0, 0)  融资余额 20 日变化（%，收盘时已知的前一天的数，来自 data\tdx_margin.csv），没有数据时为 0
 //   TDXDLL1(8, DATE, 0, 0)  融资余额（亿元，前一天的数）
 //   TDXDLL1(9, DATE, 0, 0)  原样返回输入（测试接口用）
+//   TDXDLL1(21~28, DATE, 0, 0)  通用表 data\tdx_extra.csv 的第 1~8 列，没有数据时为 0；目前是：
+//     21 全市场涨停家数、22 跌停家数、23 短线冰点（跌停>涨停 且 跌停≥20 为 1）、24 中线温度、25 短线温度分位
+//     以后给公式加新的全市场数据，只需 Python 多写一列，不用重新编译 DLL
 // 通达信的 DATE 是 (年-1900)*10000+月*100+日，例如 2026-10-13 为 1261013。
 // 文件修改后会自动重新读取。
 
 #include <windows.h>
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <vector>
 
 #pragma pack(push, 1)
@@ -31,9 +36,11 @@ typedef struct tagPluginTCalcFuncInfo {
 
 namespace {
 
+const int kCols = 8;
+
 struct Row {
     int date;  // YYYYMMDD
-    float v[3];
+    float v[kCols];
 };
 
 struct Table {
@@ -45,6 +52,7 @@ struct Table {
 Table g_nt = {"D:\\TradingSignal\\data\\tdx_nt.csv", {}, {0, 0}};
 Table g_crowd = {"D:\\TradingSignal\\data\\tdx_crowd.csv", {}, {0, 0}};
 Table g_margin = {"D:\\TradingSignal\\data\\tdx_margin.csv", {}, {0, 0}};
+Table g_extra = {"D:\\TradingSignal\\data\\tdx_extra.csv", {}, {0, 0}};
 CRITICAL_SECTION g_lock;
 
 void Reload(Table& t) {
@@ -57,8 +65,14 @@ void Reload(Table& t) {
     std::vector<Row> rows;
     FILE* f = nullptr;
     if (fopen_s(&f, t.path, "r") == 0 && f) {
-        Row r;
-        while (fscanf_s(f, "%d,%f,%f,%f", &r.date, &r.v[0], &r.v[1], &r.v[2]) == 4) rows.push_back(r);
+        char line[512];
+        while (fgets(line, sizeof line, f)) {
+            Row r = {};
+            char* p = line;
+            r.date = static_cast<int>(strtol(p, &p, 10));
+            for (int k = 0; k < kCols && *p == ','; k++) r.v[k] = strtof(p + 1, &p);
+            if (r.date > 19000000) rows.push_back(r);
+        }
         fclose(f);
     }
     std::sort(rows.begin(), rows.end(), [](const Row& x, const Row& y) { return x.date < y.date; });
@@ -90,6 +104,8 @@ void FuncCrowdZone(int n, float* out, float* a, float*, float*) { Lookup(g_crowd
 void FuncCrowdMark(int n, float* out, float* a, float*, float*) { Lookup(g_crowd, n, out, a, 2); }
 void FuncMarginChg(int n, float* out, float* a, float*, float*) { Lookup(g_margin, n, out, a, 0); }
 void FuncMarginBal(int n, float* out, float* a, float*, float*) { Lookup(g_margin, n, out, a, 1); }
+template <int K>
+void FuncExtra(int n, float* out, float* a, float*, float*) { Lookup(g_extra, n, out, a, K); }
 void FuncEcho(int n, float* out, float* a, float*, float*) {
     for (int i = 0; i < n; i++) out[i] = a[i];
 }
@@ -98,7 +114,10 @@ PluginTCalcFuncInfo g_funcs[] = {
     {1, &FuncNet}, {2, &FuncZone}, {3, &FuncFlag},
     {4, &FuncCrowd}, {5, &FuncCrowdZone}, {6, &FuncCrowdMark},
     {7, &FuncMarginChg}, {8, &FuncMarginBal},
-    {9, &FuncEcho}, {0, nullptr},
+    {9, &FuncEcho},
+    {21, &FuncExtra<0>}, {22, &FuncExtra<1>}, {23, &FuncExtra<2>}, {24, &FuncExtra<3>},
+    {25, &FuncExtra<4>}, {26, &FuncExtra<5>}, {27, &FuncExtra<6>}, {28, &FuncExtra<7>},
+    {0, nullptr},
 };
 
 }  // namespace

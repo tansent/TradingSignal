@@ -30,6 +30,7 @@ import weekly_zone  # noqa: E402
 import national_team  # noqa: E402
 import crowding  # noqa: E402
 import red_top  # noqa: E402
+import icepoint  # noqa: E402
 
 DATA = ROOT / "data"
 OUT = ROOT / "report_data"
@@ -44,6 +45,7 @@ SENTI_KEYS = {"红利低波ETF": "s_dlv", "上证50": "s_sz50", "沪深300": "s_
               "上证指数": "s_sh", "深证成指": "s_sz", "创业板指": "s_cyb", "科创50": "s_kc50"}
 # 信号：dingdi 列名、简写、全称、网页图上的代码（按显示优先级排列）
 SIGNALS = [("底部三级", "★★B", "★★B 三级底部", "B3"), ("顶部", "★S", "★S 二级顶部", "S"), ("顶部一级", "▽S", "▽S 一级顶部", "S1"),
+           ("乖离顶", "乖S", "乖S 乖离顶（天量收阴）", "SG"),
            ("底部二级", "★B", "★B 二级底部", "B2"), ("底部一级", "△B", "△B 一级底部", "B1"), ("破月BBI", "破", "破 跌破月线BBI", "M")]
 ETF_SINA = ["sh510300", "sh510310", "sh510330", "sz159919", "sh510050", "sh510500", "sh512100", "sz159915",
             "sh588000", "sh510180"]
@@ -224,6 +226,8 @@ def main():
     log("5/6 指数信号")
     b = pd.read_parquet(DATA / "breadth_daily.parquet")
     a = b[b.board == "all"].set_index("date").sort_index()
+    ice = icepoint.icepoint(a)       # 短线冰点：跌停 > 涨停 且 跌停 ≥ 20 家
+    icepoint.export_extra_tdx(a, t, DATA / "tdx_extra.csv")   # 给通达信 DLL（21~28 号：涨跌停家数、冰点、温度）
     bd = a.index.max()
     gap_days = int((tdx.index > bd).sum())
     if gap_days:
@@ -262,21 +266,27 @@ def main():
     crowd_now = crowd.get(asof, np.nan)
     tz = crowding.top_zone(crowd, hs) if len(crowd) else pd.DataFrame(columns=["zone", "mark"])
     cz = tz.reindex([asof]).iloc[0] if len(tz) else pd.Series({"zone": 0, "mark": 0})
-    red_s = []      # 红色 ◆S：二次冲顶（再涨≥5%+拥挤≥50%+情绪≥85+放量）或 M 顶（30 天内回到前高附近、拥挤不降、量和融资不减）
+    red_s, red_ser = [], {}      # 红色 ◆S：二次冲顶（再涨≥5%+拥挤≥50%+情绪≥85+放量）或 M 顶（30 天内回到前高附近、拥挤不降、量和融资不减）
     if len(tz):
         div = {n for n, _, g in EXTRA if g == "红利"}     # ◆S 不适用于红利类：拥挤度高之后红利低波反而偏强
         for name, (df, r) in sig.items():
             if name not in div and "amount" in df and asof in df.index:
-                kinds =[k for k, fn in (("二次冲顶", lambda: red_top.red_signal(df, r, crowd, tz["mark"])),
-                                         ("M顶", lambda: red_top.red_signal_mtop(df, r, crowd, tz["mark"], mg20k)))
-                         if bool(fn().get(asof, False))]
+                two = red_top.red_signal(df, r, crowd, tz["mark"]).reindex(df.index, fill_value=False)
+                mtop = red_top.red_signal_mtop(df, r, crowd, tz["mark"], mg20k).reindex(df.index, fill_value=False)
+                red_ser[name] = two | mtop
+                kinds = [k for k, s in (("二次冲顶", two), ("M顶", mtop)) if bool(s.get(asof, False))]
                 if kinds:
                     red_s.append(f"{name}（{'、'.join(kinds)}）")
+    # 浅蓝 B：全市场冰点 + 该指数前 20 天无 S（含红色 ◆S）、前 5 天无 B、离 20 日高点 ≥5%、10 天内第一个（research/icepoint.py）
+    ice_chart = {n: icepoint.chart_ice(df, r, ice, red_ser.get(n)) for n, (df, r) in sig.items() if n not in {x for x, *_ in EXTRA}}
+    ice_idx = [n for n, s in ice_chart.items() if s.get(asof, False)]
     write("summary", [{
         "date": iso(asof), "mid_temp": t["中线温度"].get(asof), "short_temp": t["短线温度_分位"].get(asof),
         "heat": h.H.reindex([asof]).iloc[0] * 100, "margin_yi": m_last.iloc[-1], "margin_date": iso(m_last.index[-1]),
         "amount_yi": ar["amount"] / 1e8, "up": ar["up"], "down": ar["down"],
         "zt": ar["zt"], "dt": ar["dt"], "zb": ar["zb"], "max_lb": ar["max_lb"],
+        "ice": bool(ice.get(asof, False)), "ice_last": iso(ice[ice].index.max()) if ice.any() else None,
+        "ice_idx": "、".join(ice_idx) or None,
         "breadth_date": iso(bd), "gap_days": gap_days,
         "crowd": crowd_now, "crowd_max20": crowd.loc[:asof].tail(20).max() if len(crowd) else None,
         "hs300_dist_high": hs_dist * 100, "crowd_warn": bool(cz["zone"] == 2), "crowd_mark": bool(cz["mark"] == 1),
@@ -295,6 +305,9 @@ def main():
         alerts.append("红色◆S：" + "、".join(red_s))
     if alerts:
         log("★ 重要提醒：" + "；".join(alerts))
+    if ice.get(asof, False):
+        log(f"全市场跌停 {int(ar['dt'])} 家 > 涨停 {int(ar['zt'])} 家；"
+            + (f"浅蓝 B 冰点：{'、'.join(ice_idx)}（只作短线参考）" if ice_idx else "各指数都不符合浅蓝 B 的条件"))
 
     days = tdx.index[-250:]
     hist = pd.DataFrame(index=days)
@@ -322,7 +335,7 @@ def main():
     mg = mt["融资余额(亿)"]
     tab = []
     for d in tdx.index[-20:][::-1]:
-        sigs = [f"{n}{x}" for n, (_, r) in sig.items() if d in r.index for x in day_signals(r, d)]
+        sigs = [f"{n}冰点" for n, s in ice_chart.items() if s.get(d, False)] + [f"{n}{x}" for n, (_, r) in sig.items() if d in r.index for x in day_signals(r, d)]
         shc = sig["上证指数"][0].close
         tab.append({"date": iso(d), "sh": shc.get(d), "sh_pct": (shc.get(d) / shc.shift().get(d) - 1) * 100,
                     "mid_temp": t["中线温度"].get(d), "short_temp": t["短线温度_分位"].get(d), "heat": h.H.get(d, np.nan) * 100,

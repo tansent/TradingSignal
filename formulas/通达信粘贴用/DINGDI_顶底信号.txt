@@ -23,6 +23,11 @@ SIG:=REF(STD(C/REF(C,1)-1,250),1);
 二级:=一级 AND 恐慌 AND BARSLAST(H>=HHV(H,120))>=30;
 DRAWTEXT(一级 AND NOT(二级),L*0.99,'△B'),COLORYELLOW;
 DRAWTEXT(二级,L*0.98,'★B'),COLORRED;
+{乖S 乖离顶：暴涨后天量收阴。20 日乖离 ≥ 6 倍日波动率，成交额 ≥ 前一年最大值的 90%，收盘比开盘低 ≥1%。
+ ★S 要求上影线和跌破 5 日线，抓不到"高开在最高点、一路走低"的顶（2024-10-08）。2010 年以来 30 次，之后 60 天下跌的比例 83%；2014-12-09 那次之后继续大涨。}
+乖离:=(C/MA(C,20)-1)/SIG;
+乖离顶:=乖离>=6 AND AMOUNT>=REF(HHV(AMOUNT,250),1)*0.9 AND C/O-1<=-0.01;
+DRAWTEXT(乖离顶,H*1.04,'乖S'),COLORGREEN;
 NEWM:=MONTH<>REF(MONTH,1);
 NB:=BARSLAST(NEWM)+1;
 MC1:=REF(C,NB);
@@ -75,3 +80,10 @@ DRAWTEXT(二次冲顶 AND NOT(红利类),H*1.09,'◆S'),COLORRED;
 拥挤不降:=拥挤>=MAX(48,REF(拥挤,距橙));
 M顶:=距橙>=1 AND 距橙<=30 AND 近前高 AND 拥挤不降 AND MA(AMOUNT,5)>=MA(AMOUNT,20) AND HHV(情绪,3)>=70 AND TDXDLL1(7,DATE,0,0)>=0;
 DRAWTEXT(M顶 AND NOT(二次冲顶) AND NOT(红利类),H*1.09,'◆S'),COLORRED;
+{浅蓝色 B 短线冰点：全市场跌停家数多于涨停家数，且跌停 ≥20 家（DLL 23 号函数），再加四个条件：前 20 天没有 ★S/▽S/乖S/红色◆S（顶部之后的冰点没有优势，
+ 红色◆S 后 20 天内的 6 次之后 20 天只有 1 次上涨）；前 5 天没有 △B/★B（重复提示）；收盘比 20 日最高收盘低 ≥5%（真跌下来了）；10 天内只画第一个。只作短线参考。
+ 8 个宽基 2011 年以来：每个指数每年约 2.7 次，之后 5 天、20 天上涨比例约 65%（所有交易日约 52%、51%）。}
+红S:=(二次冲顶 OR M顶) AND NOT(红利类);
+冰点候选:=TDXDLL1(23,DATE,0,0)>0 AND COUNT(顶部 OR 顶部一级 OR 乖离顶 OR 红S,20)=0 AND COUNT(一级,5)=0 AND C<=HHV(C,20)*0.95;
+冰点:=冰点候选 AND COUNT(REF(冰点候选,1),10)=0;
+DRAWTEXT(冰点,L*0.99,'B'),COLORFFCC66;

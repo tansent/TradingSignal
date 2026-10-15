@@ -39,6 +39,14 @@ def compute(df: pd.DataFrame) -> pd.DataFrame:
         panic = pd.Series(False, index=df.index)
     since_high = H.rolling(120).apply(lambda x: len(x) - 1 - np.where(x >= x.max())[0][-1], raw=True)
     t2 = t1 & panic & (since_high >= 30)
+    # 乖S 乖离顶（2026-10-16）：暴涨后天量收阴。20 日乖离 ≥ 6 倍日波动率，成交额 ≥ 前一年最大值的 90%，收盘比开盘低 ≥1%。
+    # ★S 要求上影线和跌破 5 日线，抓不到"高开在最高点、一路走低"的顶（2024-10-08）。2010 年以来 30 次，之后 60 天下跌的比例 83%、中位 -4.3%；
+    # 2014-12-09 那次之后继续大涨（和 ◆S 一样，那是牛市主升段）。
+    if "amount" in df:
+        glz = (C / C.rolling(20).mean() - 1) / sig
+        gl = (glz >= 6) & (df.amount >= df.amount.rolling(250).max().shift() * 0.9) & (C / O - 1 <= -0.01)
+    else:
+        gl = pd.Series(False, index=df.index)
     # 破月BBI：收盘连续 2 天在月线 BBI 下方（第 2 天标记；之后要先回到上方才会再标）
     mb = asof_bbi(C)
     below = C < mb
@@ -46,7 +54,7 @@ def compute(df: pd.DataFrame) -> pd.DataFrame:
     brk = b2 & ~b2.shift(1, fill_value=False)
     return pd.DataFrame({
         "情绪": qx, "情绪_盘中低": qxl,
-        "顶部": top.fillna(False), "顶部一级": top1.fillna(False),
+        "顶部": top.fillna(False), "顶部一级": top1.fillna(False), "乖离顶": gl.fillna(False),
         "底部一级": (t1 & ~t2).fillna(False), "底部二级": t2.fillna(False),
         "月线BBI": mb, "破月BBI": brk,
     })

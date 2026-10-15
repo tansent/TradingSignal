@@ -266,6 +266,7 @@
   const PX = { sh: '上证指数', hs300: '沪深300', sz: '深证成指', cyb: '创业板指', kc50: '科创50' };
   const SIG = { B3: { label: '★★B 三级底部', color: 'var(--color-bad)', sym: '★' },
     S: { label: '★S 二级顶部', color: 'var(--color-ok)', sym: '▼', above: true }, S1: { label: '▽S 一级顶部', color: 'var(--color-ok)', sym: '▽', above: true },
+    SG: { label: '乖S 乖离顶', color: 'var(--color-ok)', sym: '乖', above: true },
     B2: { label: '★B 二级底部', color: 'var(--color-bad)', sym: '▲' }, B1: { label: '△B 一级底部', color: 'var(--color-warn)', sym: '△' },
     M: { label: '破 跌破月线BBI', color: 'var(--color-fg-muted)', sym: '破', above: true } };
   let pxKey = 'sh';
@@ -453,9 +454,10 @@
     const b3 = by('★★B'), b2 = by('★B'), b1 = by('△B'), st = by('★S'), mb = by('破');
     if (alerts(s, idx).length) parts.push('今天有重要信号，见上方「重要提醒」。');
     if (b1.length) parts.push(`${b1.join('、')}出现 △B 一级底部信号。`);
-    const s1 = by('▽S');
+    const s1 = by('▽S'), sg = by('乖S');
     if (st.length) parts.push(`${st.join('、')}出现 ★S 二级顶部信号。`);
     if (s1.length) parts.push(`${s1.join('、')}出现 ▽S 一级顶部信号。`);
+    if (sg.length) parts.push(`${sg.join('、')}出现 乖S 乖离顶（暴涨后天量收阴）：2010 年以来 30 次，之后 60 天下跌的比例约 83%；2014-12 那次之后继续大涨。`);
     if (mb.length) parts.push(`${mb.join('、')}收盘连续两天跌破月线 BBI。`);
     const wTop = idx.filter((r) => r.wzone === '顶部区域').map((r) => r.name), wBot = idx.filter((r) => r.wzone === '底部区域').map((r) => r.name);
     if (wTop.length || wBot.length) parts.push(`周线：${[wTop.length ? wTop.join('、') + '处于顶部区域' : '', wBot.length ? wBot.join('、') + '处于底部区域' : ''].filter(Boolean).join('，')}。`);
@@ -464,9 +466,12 @@
     if (ntNear.length) parts.push(`接近国家队入场期最低点：${ntNear.join('、')}。`);
     const bInTop = idx.filter((r) => r.wzone === '顶部区域' && /△B|★B/.test(r.signal || '')).map((r) => r.name);
     if (bInTop.length) parts.push(`${bInTop.join('、')}的日线底部信号出现在周线顶部区域里：2015 年以来这种位置的 △B 之后 60 天上涨的比例约 37%，60 天内再跌的中位数约 15%。`);
-    if (!b3.length && !b2.length && !b1.length && !st.length && !s1.length && !mb.length) parts.push('今天各指数没有顶底信号。');
+    if (!b3.length && !b2.length && !b1.length && !st.length && !s1.length && !sg.length && !mb.length) parts.push('今天各指数没有顶底信号。');
     const os = idx.filter((r) => r.senti != null && r.senti <= 15).map((r) => r.name);
     if (os.length) parts.push(`${os.join('、')}情绪处于超卖区。`);
+    if (s.ice) parts.push(s.ice_idx
+      ? `短线冰点（浅蓝 B）：${s.ice_idx}。全市场跌停 ${f0(s.dt)} 家，多于涨停 ${f0(s.zt)} 家，指数已从 20 日高点回落 5% 以上。每个指数一年约 3 次，之后 5 天、20 天上涨的比例约 64%（平时约 52%），只作短线参考。`
+      : `全市场跌停 ${f0(s.dt)} 家，多于涨停 ${f0(s.zt)} 家，但各指数都不符合浅蓝 B 冰点的条件（刚出过 S 或 B、离 20 日高点不到 5%，或 10 天内已经出过），不算冰点信号。`);
     (us || []).forEach((r) => {
       if (/B/.test(r.signal)) parts.push(`美股：${r.name}出现 ${r.signal}（美股底部信号历史上较有效）。`);
       else if (/S/.test(r.signal)) parts.push(`美股：${r.name}出现 ${r.signal}（美股顶部信号历史上不可靠，多数时候之后仍在涨）。`);
