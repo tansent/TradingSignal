@@ -287,6 +287,14 @@ def main():
         "nt_days": len(nt_ep) if nt_ep is not None else 0, "nt_total_yi": float(nt_ep.net.sum()) if nt_ep is not None else None,
         "built_at": time.strftime("%Y-%m-%dT%H:%M:%S+08:00"),
     }])
+    alerts = [f"{r['name']} {k}" for r in idx_rows if r["group"] != "红利"
+              for k in ("★★B", "★B") if k in (r["signal"] or "").split("、")]
+    if cz["mark"] == 1:
+        alerts.append("全市场 橙色◆S 抱团顶")
+    if red_s:
+        alerts.append("红色◆S：" + "、".join(red_s))
+    if alerts:
+        log("★ 重要提醒：" + "；".join(alerts))
 
     days = tdx.index[-250:]
     hist = pd.DataFrame(index=days)

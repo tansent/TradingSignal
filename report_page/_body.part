@@ -2,6 +2,10 @@
   <header class="rp-head" id="summary-head">
     <h1>A股情绪日报</h1>
     <div class="rp-asof">数据日期 <span class="dash-skeleton" data-source="summary" data-field="date" data-row="0">—</span></div>
+    <section class="rp-alert" id="alert" hidden>
+      <h2>重要提醒</h2>
+      <ul id="alert-list"></ul>
+    </section>
     <p class="rp-take dash-skeleton" id="takeaway" data-source="summary indexes">—</p>
   </header>
 

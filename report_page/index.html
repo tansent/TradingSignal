@@ -4,6 +4,10 @@
 .rp-head { display: grid; gap: var(--cds-gap-xs); }
 .rp-head h1 { margin: 0; font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); text-wrap: balance; }
 .rp-asof { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+.rp-alert { margin: var(--cds-gap-xs) 0; padding: var(--cds-pad-md) var(--cds-pad-lg); border: 1px solid var(--color-bad); border-left-width: 4px; border-radius: var(--cds-radius); background: color-mix(in srgb, var(--color-bad) 8%, transparent); max-width: 90ch; }
+.rp-alert h2 { margin: 0 0 var(--cds-gap-xs); font-size: var(--cds-font-size-heading); color: var(--color-bad); }
+.rp-alert ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.rp-alert li { font-size: var(--cds-font-size-body); text-wrap: pretty; }
 .rp-take { margin: 0; font-size: var(--cds-font-size-body); max-width: 70ch; text-wrap: pretty; }
 .rp-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12.5rem), 1fr)); gap: var(--cds-gap-md); }
 .rp-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); min-width: 0; display: grid; gap: var(--cds-gap-sm); align-content: start; }
@@ -61,6 +65,10 @@
   <header class="rp-head" id="summary-head">
     <h1>A股情绪日报</h1>
     <div class="rp-asof">数据日期 <span class="dash-skeleton" data-source="summary" data-field="date" data-row="0">—</span></div>
+    <section class="rp-alert" id="alert" hidden>
+      <h2>重要提醒</h2>
+      <ul id="alert-list"></ul>
+    </section>
     <p class="rp-take dash-skeleton" id="takeaway" data-source="summary indexes">—</p>
   </header>
 
@@ -425,6 +433,17 @@
     return out.map((b) => ({ from: b.from, to: b.to, fill: b.v > 0 ? 'var(--color-ok)' : 'var(--color-bad)' }));
   }
 
+  // 重要提醒：主要指数出现 ★★B、★B、橙色 ◆S、红色 ◆S 时写在日报最上面
+  function alerts(s, idx) {
+    const by = (k) => idx.filter((r) => r.group !== '红利' && (r.signal || '').split('、').includes(k)).map((r) => r.name);
+    const out = [], b3 = by('★★B'), b2 = by('★B');
+    if (b3.length) out.push([`★★B 三级底部：${b3.join('、')}`, '★B 叠加中线温度极低或国家队大额申购。2011 年以来 9 轮，之后一年内都有像样的反弹（最高涨幅中位约 +25%），约一半成为牛市起点；如果之后跌破当天低点，更像熊市里的反弹。']);
+    if (b2.length) out.push([`★B 二级底部：${b2.join('、')}`, '收盘时恐慌确认（下跌家数 ≥92%）。之后 3 天内摸到 +3% 的比例约 45%，60 天上涨比例约 63%；在月线 BBI 向下的趋势里多是反弹，60 天内中位还会再跌约 7%。']);
+    if (s.crowd_mark) out.push(['橙色 ◆S 抱团顶：全市场（红利类除外）', `A股拥挤度 ${f1(s.crowd)}%，且沪深300 在一年高点 5% 以内。2011 年以来 4 次里 3 次是阶段顶部，顶通常在之后 1～2 个月内出现；2014-12 那次之后是大牛市。`]);
+    if (s.red_s) out.push([`红色 ◆S：${s.red_s}`, '橙色 ◆S 之后二次冲顶或形成 M 顶，比橙色 ◆S 更危险：2015 年以来之后 60 天下跌的比例约 78～82%，中位约 −10%。']);
+    return out;
+  }
+
   function takeaway(s, idx, us) {
     const parts = s.mid_temp != null
       ? [`${md(parse(s.date))}：中线温度${zoneMid(s.mid_temp)}，${zoneShort(s.short_temp)}，融资与成交额${s.heat != null ? zoneHeat(s.heat) : '暂缺'}。`]
@@ -432,8 +451,7 @@
     if (s.gap_days > 0 && s.breadth_date) parts.push(`全市场个股数据只到 ${md(parse(s.breadth_date))}（缺 ${s.gap_days} 个交易日），温度和涨跌家数暂停在那天；打开通达信 → 盘后数据下载 补齐后再更新。指数情绪和信号不受影响。`);
     const by = (k) => idx.filter((r) => (r.signal || '').split('、').includes(k)).map((r) => r.name);
     const b3 = by('★★B'), b2 = by('★B'), b1 = by('△B'), st = by('★S'), mb = by('破');
-    if (b3.length) parts.push(`${b3.join('、')}出现 ★★B 三级底部信号（★B 叠加中线温度极低或国家队大额申购）。`);
-    if (b2.length) parts.push(`${b2.join('、')}出现 ★B 二级底部信号。`);
+    if (alerts(s, idx).length) parts.push('今天有重要信号，见上方「重要提醒」。');
     if (b1.length) parts.push(`${b1.join('、')}出现 △B 一级底部信号。`);
     const s1 = by('▽S');
     if (st.length) parts.push(`${st.join('、')}出现 ★S 二级顶部信号。`);
@@ -453,10 +471,9 @@
       if (/B/.test(r.signal)) parts.push(`美股：${r.name}出现 ${r.signal}（美股底部信号历史上较有效）。`);
       else if (/S/.test(r.signal)) parts.push(`美股：${r.name}出现 ${r.signal}（美股顶部信号历史上不可靠，多数时候之后仍在涨）。`);
     });
-    if (s.crowd != null && s.crowd >= 48) parts.push(s.crowd_warn
+    if (s.crowd != null && s.crowd >= 48 && !s.crowd_mark) parts.push(s.crowd_warn
       ? `${s.crowd_mark ? '出现 ◆S 抱团顶：' : ''}A股拥挤度 ${f1(s.crowd)}%，且沪深300 在一年高点 5% 以内：资金高度抱团，2011 年以来这种情况 4 次里 3 次是阶段顶部。`
       : `A股拥挤度 ${f1(s.crowd)}%，但沪深300 离一年高点较远（${f1(s.hs300_dist_high)}%），更像下跌中成交集中到大盘股，不按顶部信号看。`);
-    if (s.red_s) parts.push(`${s.red_s}出现红色 ◆S（二次冲顶）：橙色 ◆S 之后又涨了 5% 以上，同时拥挤度 ≥50%、情绪亢奋、放量。2015 年以来这种位置之后 20 天下跌的比例约 82%，中位 −9%，比橙色 ◆S 更危险；但 2014-12 那一轮之后是大牛市，两种 ◆S 都失效了。`);
     if (s.etf_net_yi != null) parts.push(`宽基 ETF ${s.etf_net_yi >= 0 ? '净申购' : '净赎回'}。`);
     return parts.join('');
   }
@@ -483,6 +500,11 @@
 
     if (S.status === 'ok' && S.data.length) setMark('[data-source="summary"][data-field="date"]', ymd(parse(S.data[0].date)));
     const take = document.getElementById('takeaway');
+    if (S.status === 'ok' && I.status === 'ok' && S.data.length) {
+      const items = alerts(S.data[0], I.data), box = document.getElementById('alert');
+      document.getElementById('alert-list').replaceChildren(...items.map(([h, t]) => { const li = document.createElement('li'), bb = document.createElement('b'); bb.textContent = h + '。'; li.append(bb, t); return li; }));
+      box.hidden = !items.length;
+    }
     if (S.status === 'ok' && I.status === 'ok' && S.data.length) { take.textContent = takeaway(S.data[0], I.data, dash.data('us').status === 'ok' ? dash.data('us').data : []); take.classList.remove('dash-skeleton'); }
 
     if (D.status === 'ok') fillTable('#daily-table', D.data, (r) => [r.date, nv(r.sh, f2), nv(r.sh_pct, sgn2), nv(r.mid_temp, f1), nv(r.short_temp, f1), nv(r.heat, f1), nv(r.crowd, f1),
