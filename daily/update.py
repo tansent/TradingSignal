@@ -130,7 +130,10 @@ def update_etf_daily():
 
 
 def etf_net_creation() -> pd.DataFrame:
-    """宽基 ETF 每日净申购（亿元）= 份额变化 × 当日收盘价；份额单日变化超过 30% 视为拆分，记 0。"""
+    """宽基 ETF 每日净申购（亿元）= 份额变化 × 当日收盘价。
+    份额单日变化超过 30%、且价格在前后一天内反向同比例变化（份额×价格 ≈ 不变）时视为拆分或合并，记 0。
+    （原来只看"份额变化超过 30%"，把 2015-07 救市、2024-02-05、2026-10-15 510310 +188 亿这类真实大额申购也清零了；
+    2024-09-20 510310 的 2 合 1 份额合并，份额在 20 日减半、价格在 23 日翻倍，所以要看前后一天。）"""
     f = DATA / "etf_shares_sse.csv"
     if not f.exists():
         return pd.DataFrame(columns=["net_yi", "net_300_yi"], dtype=float)
@@ -144,7 +147,11 @@ def etf_net_creation() -> pd.DataFrame:
             px[code] = pd.read_csv(f, parse_dates=["date"]).set_index("date")["close"]
     px = pd.DataFrame(px).reindex(p.index).ffill()
     d = p.diff()
-    d = d.where((d.abs() / p.shift()).fillna(0) <= 0.3, 0)
+    r = p / p.shift()
+    pr1 = px / px.shift()
+    pr3 = (px.shift(-1) / px.shift(1)).fillna(pr1)          # 份额和价格可能错开一天
+    split = ((r > 1.3) | (r < 1 / 1.3)) & (((r * pr1 - 1).abs() < 0.15) | ((r * pr3 - 1).abs() < 0.15))
+    d = d.where(~split.fillna(False), 0)
     net = d * px / 1e8
     out = pd.DataFrame({"net_yi": net.sum(axis=1, min_count=1),
                         "net_300_yi": net[[c for c in ("510300", "510310", "510330") if c in net]].sum(axis=1, min_count=1)})
@@ -280,6 +287,15 @@ def main():
     # 深蓝 B：全市场冰点 + 该指数前 20 天无 S（含红色 ◆S）、前 5 天无 B、离 20 日高点 ≥5%、10 天内第一个（research/icepoint.py）
     ice_chart = {n: icepoint.chart_ice(df, r, ice, red_ser.get(n)) for n, (df, r) in sig.items() if n not in {x for x, *_ in EXTRA}}
     ice_idx = [n for n, s in ice_chart.items() if s.get(asof, False)]
+    # 托：国家队常用的沪深300 ETF 当天成交额 ≥ 前 20 日均额 3 倍（疑似托底，次日份额确认）；近 6 天有 ★B 的指数图上标"托"
+    spike = []
+    for code in ("sh510310", "sh510300"):
+        f = DATA / "etf" / f"{code}.csv"
+        if f.exists():
+            am = pd.read_csv(f, parse_dates=["date"]).set_index("date")["amount"].loc[:asof]
+            if len(am) > 21 and am.index[-1] == asof and am.iloc[-1] >= am.iloc[-21:-1].mean() * 3:
+                spike.append(f"{code[2:]} {am.iloc[-1] / am.iloc[-21:-1].mean():.1f} 倍")
+    tuo = [n for n, (_, r) in sig.items() if spike and n not in {x for x, *_ in EXTRA} and r["底部二级"].tail(6).any()]
     write("summary", [{
         "date": iso(asof), "mid_temp": t["中线温度"].get(asof), "short_temp": t["短线温度_分位"].get(asof),
         "heat": h.H.reindex([asof]).iloc[0] * 100, "margin_yi": m_last.iloc[-1], "margin_date": iso(m_last.index[-1]),
@@ -287,6 +303,7 @@ def main():
         "zt": ar["zt"], "dt": ar["dt"], "zb": ar["zb"], "max_lb": ar["max_lb"],
         "ice": bool(ice.get(asof, False)), "ice_last": iso(ice[ice].index.max()) if ice.any() else None,
         "ice_idx": "、".join(ice_idx) or None,
+        "nt_spike": "、".join(spike) or None, "tuo": "、".join(tuo) or None,
         "breadth_date": iso(bd), "gap_days": gap_days,
         "crowd": crowd_now, "crowd_max20": crowd.loc[:asof].tail(20).max() if len(crowd) else None,
         "hs300_dist_high": hs_dist * 100, "crowd_warn": bool(cz["zone"] == 2), "crowd_mark": bool(cz["mark"] == 1),
@@ -305,6 +322,8 @@ def main():
         alerts.append("红色◆S：" + "、".join(red_s))
     if alerts:
         log("★ 重要提醒：" + "；".join(alerts))
+    if spike:
+        log("沪深300 ETF 放量（疑似国家队托底，明早看份额确认）：" + "、".join(spike) + (f"；近 6 天有 ★B：{'、'.join(tuo)}" if tuo else ""))
     if ice.get(asof, False):
         log(f"全市场跌停 {int(ar['dt'])} 家 > 涨停 {int(ar['zt'])} 家；"
             + (f"深蓝 B 冰点：{'、'.join(ice_idx)}（只作短线参考）" if ice_idx else "各指数都不符合深蓝 B 的条件"))

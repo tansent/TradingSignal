@@ -218,6 +218,8 @@
     if (!b3.length && !b2.length && !b1.length && !st.length && !s1.length && !sg.length && !mb.length) parts.push('今天各指数没有顶底信号。');
     const os = idx.filter((r) => r.senti != null && r.senti <= 15).map((r) => r.name);
     if (os.length) parts.push(`${os.join('、')}情绪处于超卖区。`);
+    if (s.nt_spike) parts.push(`沪深300 ETF 放量：${s.nt_spike}（当天成交额是前 20 日均额的倍数），疑似国家队托底，明早看宽基 ETF 净申购确认。`
+      + (s.tuo ? `${s.tuo}近 6 天有 ★B，通达信图上标"托"：历史上之后 5 天上涨约 83%，但 60 天只有 25%，只适合短线。` : ''));
     if (s.ice) parts.push(s.ice_idx
       ? `短线冰点（深蓝 B）：${s.ice_idx}。全市场跌停 ${f0(s.dt)} 家，多于涨停 ${f0(s.zt)} 家，指数已从 20 日高点回落 5% 以上。每个指数一年约 3 次，之后 5 天、20 天上涨的比例约 64%（平时约 52%），只作短线参考。`
       : `全市场跌停 ${f0(s.dt)} 家，多于涨停 ${f0(s.zt)} 家，但各指数都不符合深蓝 B 冰点的条件（刚出过 S 或 B、离 20 日高点不到 5%，或 10 天内已经出过），不算冰点信号。`);
