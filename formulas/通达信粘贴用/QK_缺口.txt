@@ -1,0 +1,19 @@
+{QK 缺口（主图叠加）：向下缺口（上方压力）画绿色虚线，向上缺口（下方支撑）画红色虚线，从缺口那天一直画到补满为止。
+ 每个方向只画最近的一个缺口：同方向出现新缺口时，旧的不再画（通达信自带的"显示未回补跳空缺口"能显示多个，优先用自带的）。
+ 缺口当天用竖条标出缺口区间。注意：2010 年以来的检验里，缺口回补的比例和同样距离的随机价位差不多，冲击缺口失败之后的涨跌也和平时一样，只当参考价位。}
+下缺:=H<REF(L,1);
+距下:=BARSLAST(下缺);
+下顶:=REF(REF(L,1),距下);
+下底:=REF(H,距下);
+下补:=距下>0 AND HHV(H,距下)>=下顶;
+压力缺口上:IF(NOT(下补),下顶,DRAWNULL),COLORGREEN,DOTLINE;
+压力缺口下:IF(NOT(下补),下底,DRAWNULL),COLORGREEN,DOTLINE;
+上缺:=L>REF(H,1);
+距上:=BARSLAST(上缺);
+上底:=REF(REF(H,1),距上);
+上顶:=REF(L,距上);
+上补:=距上>0 AND LLV(L,距上)<=上底;
+支撑缺口上:IF(NOT(上补),上顶,DRAWNULL),COLORRED,DOTLINE;
+支撑缺口下:IF(NOT(上补),上底,DRAWNULL),COLORRED,DOTLINE;
+STICKLINE(下缺,下底,下顶,6,0),COLORGREEN;
+STICKLINE(上缺,上底,上顶,6,0),COLORRED;
