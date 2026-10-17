@@ -31,6 +31,7 @@ import national_team  # noqa: E402
 import crowding  # noqa: E402
 import red_top  # noqa: E402
 import icepoint  # noqa: E402
+import valuation  # noqa: E402
 
 DATA = ROOT / "data"
 OUT = ROOT / "report_data"
@@ -260,6 +261,19 @@ def main():
             "wsig": wz["wsig"], "wsig_date": iso(wz["wsig_date"]),
             **({k: (iso(v) if k.endswith("date") else v) for k, v in national_team.defense(df, nt_ep).items()} if nt_ep is not None else {}),
         })
+    try:                       # 估值分位（当时可知）：只在极端时有意义（research/valuation.py）
+        val = valuation.current([r["name"] for r in idx_rows], refresh=True)
+    except Exception as e:  # noqa: BLE001
+        log("估值数据更新失败，本次日报不含估值：", repr(e)[:100])
+        val = {}
+    for r in idx_rows:
+        r.update(val.get(r["name"], {}))
+    try:                       # 给通达信 DLL 的估值通道（31~33 号函数）
+        valuation.export_tdx({n: df.close for n, (df, _) in sig.items()}, DATA)
+    except Exception as e:  # noqa: BLE001
+        log("估值通道导出失败：", repr(e)[:100])
+    val_low = [f"{n}（{v['val_metric']}分位 {v['val_pct'] * 100:.0f}%）" for n, v in val.items() if valuation.tag(v["val_pct"]) == "极低"]
+    val_high = [f"{n}（{v['val_metric']}分位 {v['val_pct'] * 100:.0f}%）" for n, v in val.items() if valuation.tag(v["val_pct"]) == "极高"]
     log("6/6 写出数据文件")
     write("indexes", idx_rows)
 
@@ -304,6 +318,7 @@ def main():
         "ice": bool(ice.get(asof, False)), "ice_last": iso(ice[ice].index.max()) if ice.any() else None,
         "ice_idx": "、".join(ice_idx) or None,
         "nt_spike": "、".join(spike) or None, "tuo": "、".join(tuo) or None,
+        "val_low": "、".join(val_low) or None, "val_high": "、".join(val_high) or None,
         "breadth_date": iso(bd), "gap_days": gap_days,
         "crowd": crowd_now, "crowd_max20": crowd.loc[:asof].tail(20).max() if len(crowd) else None,
         "hs300_dist_high": hs_dist * 100, "crowd_warn": bool(cz["zone"] == 2), "crowd_mark": bool(cz["mark"] == 1),
@@ -322,6 +337,8 @@ def main():
         alerts.append("红色◆S：" + "、".join(red_s))
     if alerts:
         log("★ 重要提醒：" + "；".join(alerts))
+    if val_low or val_high:
+        log("极端估值：" + "；".join(([f"极低 {'、'.join(val_low)}"] if val_low else []) + ([f"极高 {'、'.join(val_high)}"] if val_high else [])))
     if spike:
         log("沪深300 ETF 放量（疑似国家队托底，明早看份额确认）：" + "、".join(spike) + (f"；近 6 天有 ★B：{'、'.join(tuo)}" if tuo else ""))
     if ice.get(asof, False):

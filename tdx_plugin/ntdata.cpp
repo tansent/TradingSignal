@@ -17,6 +17,9 @@
 //   TDXDLL1(21~28, DATE, 0, 0)  通用表 data\tdx_extra.csv 的第 1~8 列，没有数据时为 0；目前是：
 //     21 全市场涨停家数、22 跌停家数、23 短线冰点（跌停>涨停 且 跌停≥20 为 1）、24 中线温度、25 短线温度分位
 //     以后给公式加新的全市场数据，只需 Python 多写一列，不用重新编译 DLL
+//   TDXDLL1(31~33, DATE, 估值号, 0)  估值通道 data\tdx_val_<估值号>.csv（research/valuation.py 写出），没有数据时为 0：
+//     31 低分位比例、32 高分位比例（通道价位 = 收盘价 × 比例）、33 当前估值分位（0~100，当时可知）
+//     估值号：1 上证指数、16 上证50、300 沪深300、905 中证500、852 中证1000、399001 深证成指、399006 创业板指、688 科创50、30269 红利低波
 // 通达信的 DATE 是 (年-1900)*10000+月*100+日，例如 2026-10-13 为 1261013。
 // 文件修改后会自动重新读取。
 
@@ -24,6 +27,8 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
+#include <map>
+#include <string>
 #include <vector>
 
 #pragma pack(push, 1)
@@ -44,7 +49,7 @@ struct Row {
 };
 
 struct Table {
-    const char* path;
+    std::string path;
     std::vector<Row> rows;
     FILETIME mtime;
 };
@@ -57,14 +62,14 @@ CRITICAL_SECTION g_lock;
 
 void Reload(Table& t) {
     WIN32_FILE_ATTRIBUTE_DATA a;
-    if (!GetFileAttributesExA(t.path, GetFileExInfoStandard, &a)) {
+    if (!GetFileAttributesExA(t.path.c_str(), GetFileExInfoStandard, &a)) {
         t.rows.clear();
         return;
     }
     if (CompareFileTime(&a.ftLastWriteTime, &t.mtime) == 0 && !t.rows.empty()) return;
     std::vector<Row> rows;
     FILE* f = nullptr;
-    if (fopen_s(&f, t.path, "r") == 0 && f) {
+    if (fopen_s(&f, t.path.c_str(), "r") == 0 && f) {
         char line[512];
         while (fgets(line, sizeof line, f)) {
             Row r = {};
@@ -106,6 +111,27 @@ void FuncMarginChg(int n, float* out, float* a, float*, float*) { Lookup(g_margi
 void FuncMarginBal(int n, float* out, float* a, float*, float*) { Lookup(g_margin, n, out, a, 1); }
 template <int K>
 void FuncExtra(int n, float* out, float* a, float*, float*) { Lookup(g_extra, n, out, a, K); }
+// 估值通道：每个指数一个文件 data\tdx_val_<编号>.csv，编号由公式的第 3 个参数传入（第一次用到时才读）
+std::map<int, Table> g_val;
+
+template <int K>
+void FuncVal(int n, float* out, float* a, float* b, float*) {
+    int id = n > 0 ? static_cast<int>(b[n - 1] + 0.5f) : 0;
+    if (id <= 0) {
+        for (int i = 0; i < n; i++) out[i] = 0.0f;
+        return;
+    }
+    EnterCriticalSection(&g_lock);
+    auto it = g_val.find(id);
+    if (it == g_val.end()) {
+        char path[128];
+        sprintf_s(path, "D:\\TradingSignal\\data\\tdx_val_%d.csv", id);
+        it = g_val.emplace(id, Table{path, {}, {0, 0}}).first;
+    }
+    Lookup(it->second, n, out, a, K);       // 临界区可重入
+    LeaveCriticalSection(&g_lock);
+}
+
 void FuncEcho(int n, float* out, float* a, float*, float*) {
     for (int i = 0; i < n; i++) out[i] = a[i];
 }
@@ -117,6 +143,7 @@ PluginTCalcFuncInfo g_funcs[] = {
     {9, &FuncEcho},
     {21, &FuncExtra<0>}, {22, &FuncExtra<1>}, {23, &FuncExtra<2>}, {24, &FuncExtra<3>},
     {25, &FuncExtra<4>}, {26, &FuncExtra<5>}, {27, &FuncExtra<6>}, {28, &FuncExtra<7>},
+    {31, &FuncVal<0>}, {32, &FuncVal<1>}, {33, &FuncVal<2>},
     {0, nullptr},
 };
 

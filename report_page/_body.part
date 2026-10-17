@@ -55,14 +55,14 @@
 
   <section class="rp-card" id="index-signals">
     <h2>各指数情绪与顶底信号</h2>
-    <p class="rp-note">"按市值"四个指数对应 A 股四个股指期货（IH、IF、IC、IM），从超大盘到小盘；"按板块"是上证、深证、创业板、科创板。中证500 和中证1000 走势高度重合（相关系数 0.96），深证成指和创业板指也是（0.95）；科创50 和其他指数差别最大。情绪 ≤15 超卖、≥93 过热。信号：★S 二级顶部、▽S 一级顶部、破 = 收盘连续两天跌破月线 BBI；△B 一级底部、★B 二级底部、★★B 三级底部。除 ★★B 外都与通达信公式 DINGDI 一致；★★B 要用全市场中线温度和 ETF 申购数据，只在日报里有。成分股涨跌：科创50 一栏为整个科创板的家数。周线区域显示起止日期，结束日期是没有新周线信号时的到期日。"红利"分组是红利低波ETF（512890），用 ETF 自己的价格计算，没有涨跌家数，所以不会出现 ★B / ★★B。</p>
+    <p class="rp-note">"按市值"四个指数对应 A 股四个股指期货（IH、IF、IC、IM），从超大盘到小盘；"按板块"是上证、深证、创业板、科创板。中证500 和中证1000 走势高度重合（相关系数 0.96），深证成指和创业板指也是（0.95）；科创50 和其他指数差别最大。情绪 ≤15 超卖、≥93 过热。信号：★S 二级顶部、▽S 一级顶部、破 = 收盘连续两天跌破月线 BBI；△B 一级底部、★B 二级底部、★★B 三级底部。都与通达信公式 DINGDI 一致（★★B 在通达信里要先跑 bat，由插件读中线温度和 ETF 申购数据）。估值分位：当时可知的历史分位（只和之前的历史比），≤20% 极低、≥80% 极高；只在极端时有意义，管的是"拿多久、敢下多大"，不是哪天买卖。上证50、沪深300、中证500、中证1000、上证指数、红利低波用中证官网市盈率（2011 年起）；深证成指、创业板指用蛋卷基金市盈率（2016 年起，那几年估值普遍偏高，分位会偏低）；科创50 用市净率（亏损公司多，市盈率失真）。成分股涨跌：科创50 一栏为整个科创板的家数。周线区域显示起止日期，结束日期是没有新周线信号时的到期日。"红利"分组是红利低波ETF（512890），用 ETF 自己的价格计算，没有涨跌家数，所以不会出现 ★B / ★★B。</p>
     <div class="rp-scroll">
       <table class="rp-table" id="idx-table" data-source="indexes" data-row-key="name">
         <thead><tr>
           <th data-field="name">指数</th><th data-field="group">分组</th><th data-field="close">收盘</th><th data-field="pct">涨跌 %</th>
           <th data-field="senti">情绪</th><th data-field="signal">今日信号</th><th data-field="wzone">周线区域</th>
           <th data-field="adv">成分股上涨</th><th data-field="dec">成分股下跌</th>
-          <th data-field="dist_high">距一年高点 %</th>
+          <th data-field="dist_high">距一年高点 %</th><th data-field="val_pct">估值分位</th>
           <th data-field="last_top">最近 ★S</th><th data-field="last_s1">最近 ▽S</th><th data-field="last_b3">最近 ★★B</th><th data-field="last_b2">最近 ★B</th><th data-field="last_b1">最近 △B</th><th data-field="last_m">最近 破月BBI</th>
         </tr></thead>
         <tbody></tbody>
