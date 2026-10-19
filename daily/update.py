@@ -165,6 +165,18 @@ def day_signals(r: pd.DataFrame, d) -> list[str]:
     return [x for x in out if not (x == "★B" and "★★B" in out)]
 
 
+def ma5_streak(c: pd.Series) -> int:
+    """连续收在 5 日线下方的天数（含今天）。≥5 天时出现的 △B 按规则不买，只等 ★B：
+    8 个指数 2011 年起，这种 △B 之后 60 天上涨 54%（其他 △B 62%）；分档仓位里跳过它，年化 +4.4% 对 +3.9%，最大回撤 -24.1% 对 -25.5%。"""
+    below = (c < c.rolling(5).mean()).to_numpy()[::-1]
+    n = 0
+    for x in below:
+        if not x:
+            break
+        n += 1
+    return n
+
+
 def iso(d) -> str | None:
     return None if pd.isna(d) else pd.Timestamp(d).strftime("%Y-%m-%d")
 
@@ -259,6 +271,7 @@ def main():
             "adv": df["adv"].iloc[-1] if "adv" in df else None, "dec": df["dec"].iloc[-1] if "dec" in df else None,
             "wzone": wz["wzone"] or None, "wzone_since": iso(wz["wzone_since"]), "wzone_until": iso(wz["wzone_until"]),
             "wsig": wz["wsig"], "wsig_date": iso(wz["wsig_date"]),
+            "ma5_streak": ma5_streak(df.close),
             **({k: (iso(v) if k.endswith("date") else v) for k, v in national_team.defense(df, nt_ep).items()} if nt_ep is not None else {}),
         })
     try:                       # 估值分位（当时可知）：只在极端时有意义（research/valuation.py）

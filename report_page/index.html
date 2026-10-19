@@ -453,7 +453,11 @@
     const by = (k) => idx.filter((r) => (r.signal || '').split('、').includes(k)).map((r) => r.name);
     const b3 = by('★★B'), b2 = by('★B'), b1 = by('△B'), st = by('★S'), mb = by('破');
     if (alerts(s, idx).length) parts.push('今天有重要信号，见上方「重要提醒」。');
-    if (b1.length) parts.push(`${b1.join('、')}出现 △B 一级底部信号。`);
+    const b1Rows = idx.filter((r) => { const sg = (r.signal || '').split('、'); return sg.includes('△B') && !sg.includes('★B') && !sg.includes('★★B'); });
+    const b1ok = b1Rows.filter((r) => !(r.ma5_streak >= 5)).map((r) => r.name);
+    const b1weak = b1Rows.filter((r) => r.ma5_streak >= 5).map((r) => `${r.name}（连续 ${r.ma5_streak} 天）`);
+    if (b1ok.length) parts.push(`${b1ok.join('、')}出现 △B 一级底部信号。`);
+    if (b1weak.length) parts.push(`${b1weak.join('、')}的 △B 出现在连续收在 5 日线下方的阴跌中，按规则不买，等 ★B（这种 △B 之后 60 天上涨只有 54%，阴跌中的 ★B 是 73%）。`);
     const s1 = by('▽S'), sg = by('乖S');
     if (st.length) parts.push(`${st.join('、')}出现 ★S 二级顶部信号。`);
     if (s1.length) parts.push(`${s1.join('、')}出现 ▽S 一级顶部信号。`);
