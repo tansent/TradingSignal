@@ -62,13 +62,25 @@ VARIANTS = {
 VARIANTS["合并三条"] = (VARIANTS["买：便宜+20%、贵减半"][0], VARIANTS["卖：贵卖40%、便宜卖10%"][1], VARIANTS["离场：便宜时不清仓"][2])
 
 
-def main():
+def erp_pct(name: str, idx: pd.DatetimeIndex) -> pd.Series:
+    """股权溢价（1/PE − 10 年国债，百分点）的当时可知分位，转成"越低越便宜"（和市盈率分位方向一致）。"""
+    from narrative_tests import cn10y
+    v, _ = valuation.series(name)
+    y = cn10y().reindex(v.index, method="ffill")
+    e = (100 / v - y).dropna()
+    return (1 - valuation.pct_asof(e)).reindex(idx, method="ffill")
+
+
+def main(metric: str = "pe"):
     mkt = load_market()
     rows = []
     for name, code in IDX:
         s = signals(code, mkt, 200.0)
-        v, _ = valuation.series(name)
-        q = valuation.pct_asof(v).reindex(s.index, method="ffill")
+        if metric == "erp":
+            q = erp_pct(name, s.index)
+        else:
+            v, _ = valuation.series(name)
+            q = valuation.pct_asof(v).reindex(s.index, method="ffill")
         s["v"] = np.where(q <= valuation.CHEAP, "low", np.where(q >= valuation.RICH, "high", "mid"))
         for lo, hi, per in (("2011-08-01", "2026-12-31", "全期"), ("2011-08-01", "2018-12-31", "2011-2018"), ("2019-01-01", "2026-12-31", "2019-2026")):
             x = s[(s.index >= lo) & (s.index <= hi)]
@@ -86,4 +98,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1] if len(sys.argv) > 1 else "pe")

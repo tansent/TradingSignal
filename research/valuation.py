@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parent.parent
 VAL = ROOT / "data" / "valuation"
 # 日报里的指数 → 数据来源
 CSI = {"上证50": "000016", "沪深300": "000300", "中证500": "000905", "中证1000": "000852",
-       "上证指数": "000001", "红利低波ETF": "H30269"}
+       "上证指数": "000001", "红利低波ETF": "H30269", "通信设备": "931160"}
 DANJUAN = {"深证成指": ("SZ399001", "pe"), "创业板指": ("SZ399006", "pe"), "科创50": ("SH000688", "pb")}
 CHEAP, RICH = 0.2, 0.8
 MIN_YEARS = 3           # 至少 3 年历史才算分位
@@ -99,7 +99,7 @@ def current(names, refresh: bool = False) -> dict:
 # 通道价位 = 当天收盘 × 比例 = 每股盈利 × 历史分位市盈率，只随盈利（和分位门槛）变，不随当天涨跌变；
 # 用比例而不是点位，跟踪同一指数的 ETF 图上也能直接用。编号要和 DINGDI 里的"估值号"一致。
 TDX_ID = {"上证指数": 1, "上证50": 16, "沪深300": 300, "中证500": 905, "中证1000": 852,
-          "深证成指": 399001, "创业板指": 399006, "科创50": 688, "红利低波ETF": 30269}
+          "深证成指": 399001, "创业板指": 399006, "科创50": 688, "红利低波ETF": 30269, "通信设备": 931160}
 
 
 def band(name: str, close: pd.Series | None = None) -> pd.DataFrame | None:
@@ -137,6 +137,38 @@ def export_tdx(closes: dict, out_dir) -> int:
             f.write("\n".join(lines) + "\n")
         n += 1
     return n
+
+
+def cn10y(refresh: bool = False) -> pd.Series:
+    """10 年期国债收益率（%），akshare bond_zh_us_rate，存 data/valuation/cn10y.csv。"""
+    f = VAL / "cn10y.csv"
+    if refresh or not f.exists():
+        os.environ["NO_PROXY"] = "*"
+        import akshare as ak
+        d = ak.bond_zh_us_rate(start_date="20050101")[["日期", "中国国债收益率10年"]].dropna()
+        d.columns = ["date", "y10"]
+        VAL.mkdir(parents=True, exist_ok=True)
+        d.to_csv(f, index=False)
+    return pd.read_csv(f, parse_dates=["date"]).set_index("date")["y10"].dropna()
+
+
+def erp_now(refresh: bool = False) -> dict:
+    """沪深300 股权溢价 = 盈利收益率（1/PE）− 10 年国债收益率（百分点），以及当时可知分位（越高越便宜）。
+    检验（2011 年起）：股权溢价最高的 20% 时段 3 年后全部上涨、中位 +22.5%；最低 20% 时 1 年后上涨只有 27%。
+    比"股债比"（盈利收益率 ÷ 国债利率）稳定：利率很低时比值会被放大，2026-06 大顶时股债比还有 3.86。"""
+    try:
+        y = cn10y(refresh)
+    except Exception as e:  # noqa: BLE001
+        print("国债利率更新失败，用本地数据：", repr(e)[:80])
+        y = cn10y(False)
+    got = series("沪深300")
+    if got is None:
+        return {}
+    pe, _ = got
+    d = pd.DataFrame({"ep": 100 / pe, "y": y.reindex(pe.index, method="ffill")}).dropna()
+    e = d.ep - d.y
+    return {"erp": float(e.iloc[-1]), "erp_pct": float((e.iloc[:-1] < e.iloc[-1]).mean()),
+            "erp_ep": float(d.ep.iloc[-1]), "erp_y10": float(d.y.iloc[-1]), "erp_date": e.index[-1].strftime("%Y-%m-%d")}
 
 
 def tag(p: float | None) -> str | None:

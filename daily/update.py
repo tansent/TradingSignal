@@ -268,6 +268,11 @@ def main():
         val = {}
     for r in idx_rows:
         r.update(val.get(r["name"], {}))
+    try:                       # 沪深300 股权溢价（长期背景指标）
+        erp = valuation.erp_now(refresh=True)
+    except Exception as e:  # noqa: BLE001
+        log("股权溢价计算失败：", repr(e)[:100])
+        erp = {}
     try:                       # 给通达信 DLL 的估值通道（31~33 号函数）
         valuation.export_tdx({n: df.close for n, (df, _) in sig.items()}, DATA)
     except Exception as e:  # noqa: BLE001
@@ -318,7 +323,7 @@ def main():
         "ice": bool(ice.get(asof, False)), "ice_last": iso(ice[ice].index.max()) if ice.any() else None,
         "ice_idx": "、".join(ice_idx) or None,
         "nt_spike": "、".join(spike) or None, "tuo": "、".join(tuo) or None,
-        "val_low": "、".join(val_low) or None, "val_high": "、".join(val_high) or None,
+        "val_low": "、".join(val_low) or None, "val_high": "、".join(val_high) or None, **erp,
         "breadth_date": iso(bd), "gap_days": gap_days,
         "crowd": crowd_now, "crowd_max20": crowd.loc[:asof].tail(20).max() if len(crowd) else None,
         "hs300_dist_high": hs_dist * 100, "crowd_warn": bool(cz["zone"] == 2), "crowd_mark": bool(cz["mark"] == 1),
