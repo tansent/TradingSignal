@@ -328,6 +328,19 @@ def main():
             if len(am) > 21 and am.index[-1] == asof and am.iloc[-1] >= am.iloc[-21:-1].mean() * 3:
                 spike.append(f"{code[2:]} {am.iloc[-1] / am.iloc[-21:-1].mean():.1f} 倍")
     tuo = [n for n, (_, r) in sig.items() if spike and n not in {x for x, *_ in EXTRA} and r["底部二级"].tail(6).any()]
+    lead = {}                    # 领涨板块：只是描述，不预测（research/rebound_leader.py：反弹日最强的板块之后并不更强）
+    try:
+        import rebound_leader
+        for key, kind in (("ind", "行业"), ("con", "概念")):
+            lr = rebound_leader.today(kind)
+            lead["lead_date"] = iso(lr["date"])
+            lead[f"lead_{key}"] = "、".join(
+                f"{x['name']}（{x['pct']:+.1f}%，量比 {x['vol']:.1f}" + (f"，上涨家数 {x['up']:.0f}%" if x["up"] is not None else "") + "）"
+                for x in lr["top"]) or None
+            lead[f"lead_{key}_n"] = f"{lr['above']}/{lr['total']}"
+        log(f"领涨板块（{lead['lead_date']}）：行业 {lead['lead_ind'] or '无'}；概念 {lead['lead_con'] or '无'}")
+    except Exception as e:  # noqa: BLE001
+        log("领涨板块计算失败，本次日报不显示：", repr(e)[:120])
     write("summary", [{
         "date": iso(asof), "mid_temp": t["中线温度"].get(asof), "short_temp": t["短线温度_分位"].get(asof),
         "heat": h.H.reindex([asof]).iloc[0] * 100, "margin_yi": m_last.iloc[-1], "margin_date": iso(m_last.index[-1]),
@@ -345,7 +358,7 @@ def main():
         "etf_net_yi": etf["net_yi"].reindex([asof]).iloc[0], "etf_net5_yi": net5,
         "nt_first": iso(nt_ep.index[0]) if nt_ep is not None else None, "nt_last": iso(nt_ep.index[-1]) if nt_ep is not None else None,
         "nt_days": len(nt_ep) if nt_ep is not None else 0, "nt_total_yi": float(nt_ep.net.sum()) if nt_ep is not None else None,
-        "built_at": time.strftime("%Y-%m-%dT%H:%M:%S+08:00"),
+        "built_at": time.strftime("%Y-%m-%dT%H:%M:%S+08:00"), **lead,
     }])
     alerts = [f"{r['name']} {k}" for r in idx_rows if r["group"] != "红利"
               for k in ("★★B", "★B") if k in (r["signal"] or "").split("、")]

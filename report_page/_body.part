@@ -7,6 +7,7 @@
       <ul id="alert-list"></ul>
     </section>
     <p class="rp-take dash-skeleton" id="takeaway" data-source="summary indexes">—</p>
+    <p class="rp-note" id="lead-line" hidden></p>
   </header>
 
   <section class="rp-card" id="ev-card">

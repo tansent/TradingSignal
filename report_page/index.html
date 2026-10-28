@@ -70,6 +70,7 @@
       <ul id="alert-list"></ul>
     </section>
     <p class="rp-take dash-skeleton" id="takeaway" data-source="summary indexes">—</p>
+    <p class="rp-note" id="lead-line" hidden></p>
   </header>
 
   <section class="rp-card" id="ev-card">
@@ -520,6 +521,14 @@
       box.hidden = !items.length;
     }
     if (S.status === 'ok' && I.status === 'ok' && S.data.length) { take.textContent = takeaway(S.data[0], I.data, dash.data('us').status === 'ok' ? dash.data('us').data : []); take.classList.remove('dash-skeleton'); }
+    const leadLine = document.getElementById('lead-line'), s0 = S.status === 'ok' && S.data.length ? S.data[0] : null;
+    if (s0 && s0.lead_date) {
+      leadLine.textContent = `领涨板块（${md(parse(s0.lead_date))}，只是描述、不预测）：行业 ${s0.lead_ind || '无'}；概念 ${s0.lead_con || '无'}。`
+        + `收盘站上 5 日线的行业 ${s0.lead_ind_n}、概念 ${s0.lead_con_n}；在这些板块里按当天涨幅、阳线实体、成交额比 20 日均额、上涨家数比例综合排名。`
+        + `历史上反弹日最强的板块，之后 20 天并不比其他板块强。`
+        + (s0.lead_date !== s0.date ? `板块数据只到 ${md(parse(s0.lead_date))}，打开通达信 → 盘后数据下载 补齐后再更新。` : '');
+      leadLine.hidden = false;
+    }
 
     if (D.status === 'ok') fillTable('#daily-table', D.data, (r) => [r.date, nv(r.sh, f2), nv(r.sh_pct, sgn2), nv(r.mid_temp, f1), nv(r.short_temp, f1), nv(r.heat, f1), nv(r.crowd, f1),
       nv(r.amount_yi, f0), nv(r.up, f0), nv(r.down, f0), nv(r.zt, f0), nv(r.dt, f0), nv(r.margin_yi, f0), nv(r.margin_chg_yi, sgn1), nv(r.etf_net_yi, sgn1), r.signals]);
